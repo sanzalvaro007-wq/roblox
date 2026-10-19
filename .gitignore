@@ -3,3 +3,4 @@
 sourcemap.json
 .obsidian/workspace*.json
 .DS_Store
+build/
