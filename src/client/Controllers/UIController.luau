@@ -262,7 +262,7 @@ local function build()
 		BackgroundTransparency = 0.4,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -16),
-		Size = UDim2.new(0, 260, 0, 86),
+		Size = UDim2.new(0, 260, 0, 112),
 		Visible = false,
 		Parent = gui,
 	}, {
@@ -273,6 +273,7 @@ local function build()
 	makeBar("Sanity", "Cordura", Color3.fromRGB(150, 120, 220), 1)
 	makeBar("Battery", "Batería", Color3.fromRGB(240, 210, 120), 2)
 	makeBar("Stamina", "Aguante", Color3.fromRGB(120, 200, 140), 3)
+	makeBar("Noise", "Ruido", Color3.fromRGB(220, 110, 90), 4)
 
 	toolbar = make("Frame", {
 		Name = "Toolbar",
@@ -445,6 +446,7 @@ local function update()
 		setBar("Sanity", player:GetAttribute("Sanity"), Config.Sanity.Max)
 		setBar("Battery", player:GetAttribute("Battery"), Config.Investigator.BatteryMax)
 		setBar("Stamina", player:GetAttribute("Stamina"), Config.Investigator.StaminaMax)
+		setBar("Noise", player:GetAttribute("Noise"), 1)
 		local equipped = player:GetAttribute("EquippedTool")
 		for name, slot in slots do
 			local stroke = slot:FindFirstChildOfClass("UIStroke")
@@ -522,6 +524,7 @@ function UIController.Start()
 		elseif role == Enums.Role.Investigator then
 			UIController.Splash("Eres INVESTIGADOR")
 			UIController.Toast("Repara los fusibles y escapa. Fotografía lo que no encaje.", "info")
+			UIController.Toast("Haz poco ruido: C sigilo, G/H/J gritos. Tu voz también se oye.", "info")
 		end
 	end)
 	Remotes.Event("EmfReading").OnClientEvent:Connect(function(level)

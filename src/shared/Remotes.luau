@@ -14,6 +14,8 @@ local EVENTS = {
 	"EquipTool", -- (tool: string)
 	"TakePhoto", -- (lookVector: Vector3)
 	"RequestSprint", -- (on: boolean)
+	"RequestSneak", -- (on: boolean)
+	"RequestEmote", -- (kind: string) gritos para quien juega sin voz
 
 	-- Servidor -> Cliente
 	"Notify", -- (text: string, kind: string?)
@@ -24,6 +26,12 @@ local EVENTS = {
 	"Scare", -- (intensity: number)
 	"RoundResult", -- (result: table)
 	"RoleAssigned", -- (role: string)
+	"NoisePing", -- (approxPosition: Vector3, intensity: number) solo a la Anomalía
+}
+
+-- Mensajes frecuentes donde perder alguno no importa.
+local UNRELIABLE = {
+	"VoiceLevel", -- (level: number) cliente -> servidor, volumen del propio micro
 }
 
 local Remotes = {}
@@ -31,6 +39,9 @@ local Remotes = {}
 local folder: Folder? = nil
 local known: { [string]: boolean } = {}
 for _, name in EVENTS do
+	known[name] = true
+end
+for _, name in UNRELIABLE do
 	known[name] = true
 end
 
@@ -55,6 +66,13 @@ local function getFolder(): Folder
 				remote.Parent = f
 			end
 		end
+		for _, name in UNRELIABLE do
+			if not f:FindFirstChild(name) then
+				local remote = Instance.new("UnreliableRemoteEvent")
+				remote.Name = name
+				remote.Parent = f
+			end
+		end
 	else
 		f = ReplicatedStorage:WaitForChild("Remotes") :: Folder
 	end
@@ -69,6 +87,15 @@ function Remotes.Event(name: string): RemoteEvent
 		return f:FindFirstChild(name) :: RemoteEvent
 	end
 	return f:WaitForChild(name) :: RemoteEvent
+end
+
+function Remotes.Unreliable(name: string): UnreliableRemoteEvent
+	assert(known[name], "Remote desconocido: " .. name)
+	local f = getFolder()
+	if RunService:IsServer() then
+		return f:FindFirstChild(name) :: UnreliableRemoteEvent
+	end
+	return f:WaitForChild(name) :: UnreliableRemoteEvent
 end
 
 return Remotes

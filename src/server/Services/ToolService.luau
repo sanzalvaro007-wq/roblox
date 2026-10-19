@@ -22,6 +22,8 @@ local ToolService = {}
 
 local lastPhoto: { [Player]: number } = {}
 local sprintWanted: { [Player]: boolean } = {}
+local sneakWanted: { [Player]: boolean } = {}
+local moveNoise: { [Player]: number } = {}
 
 local function flashlightOf(player: Player): SpotLight?
 	local head = PlayerUtil.Head(player)
@@ -44,6 +46,8 @@ function ToolService.Setup(player: Player)
 	player:SetAttribute("EquippedTool", Enums.Tool.None)
 	player:SetAttribute("Flashlight", false)
 	sprintWanted[player] = false
+	sneakWanted[player] = false
+	moveNoise[player] = 0
 	local head = PlayerUtil.Head(player)
 	if head and not head:FindFirstChild("Flashlight") then
 		local light = Instance.new("SpotLight")
@@ -61,11 +65,18 @@ end
 
 function ToolService.Reset(player: Player)
 	setFlashlight(player, false)
-	for _, name in { "Battery", "Film", "Stamina", "EquippedTool", "Flashlight" } do
+	for _, name in { "Battery", "Film", "Stamina", "EquippedTool", "Flashlight", "Sneaking" } do
 		player:SetAttribute(name, nil)
 	end
 	sprintWanted[player] = nil
+	sneakWanted[player] = nil
+	moveNoise[player] = nil
 	lastPhoto[player] = nil
+end
+
+-- Ruido de movimiento del último tick (lo lee NoiseService).
+function ToolService.MovementNoise(player: Player): number
+	return moveNoise[player] or 0
 end
 
 function ToolService.AddBattery(player: Player, amount: number)
@@ -197,7 +208,8 @@ local function updateMovement(player: Player, dt: number, state: string?)
 		return
 	end
 	local moving = humanoid.MoveDirection.Magnitude > 0.1
-	local sprinting = sprintWanted[player] == true and moving and stamina > 0
+	local sneaking = sneakWanted[player] == true
+	local sprinting = not sneaking and sprintWanted[player] == true and moving and stamina > 0
 	if sprinting then
 		stamina = math.max(0, stamina - I.StaminaDrain * dt)
 		if stamina <= 0 then
@@ -207,10 +219,13 @@ local function updateMovement(player: Player, dt: number, state: string?)
 		stamina = math.min(I.StaminaMax, stamina + I.StaminaRegen * dt)
 	end
 	player:SetAttribute("Stamina", stamina)
+	local N = Config.Noise
 	if state == Enums.RoundState.Preparing then
 		humanoid.WalkSpeed = 0
+		moveNoise[player] = N.Still
 	else
-		humanoid.WalkSpeed = if sprinting then I.SprintSpeed else I.WalkSpeed
+		humanoid.WalkSpeed = if sprinting then I.SprintSpeed elseif sneaking then I.SneakSpeed else I.WalkSpeed
+		moveNoise[player] = if not moving then N.Still elseif sprinting then N.Sprint elseif sneaking then N.Sneak else N.Walk
 	end
 end
 
@@ -257,6 +272,16 @@ function ToolService.Init()
 			return
 		end
 		sprintWanted[player] = on
+	end)
+
+	Remotes.Event("RequestSneak").OnServerEvent:Connect(function(player, on)
+		if typeof(on) ~= "boolean" or not Guard.RateLimit(player, "Sneak", 0.1) then
+			return
+		end
+		if PlayerUtil.IsInvestigator(player) then
+			sneakWanted[player] = on
+			player:SetAttribute("Sneaking", on)
+		end
 	end)
 
 	-- Batería, aguante y velocidad.
@@ -311,6 +336,8 @@ function ToolService.Init()
 	Players.PlayerRemoving:Connect(function(player)
 		lastPhoto[player] = nil
 		sprintWanted[player] = nil
+		sneakWanted[player] = nil
+		moveNoise[player] = nil
 	end)
 end
 

@@ -13,6 +13,12 @@
         "Client": { "$path": "src/client" }
       }
     },
+    "VoiceChatService": {
+      "$properties": {
+        "EnableDefaultVoice": true,
+        "UseAudioApi": "Enabled"
+      }
+    },
     "Lighting": {
       "$properties": {
         "Technology": "Future",

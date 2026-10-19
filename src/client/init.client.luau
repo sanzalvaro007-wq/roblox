@@ -9,6 +9,7 @@ local ORDER = {
 	"AnomalyController",
 	"SanityController",
 	"CameraController",
+	"VoiceController",
 }
 
 local loaded = {}

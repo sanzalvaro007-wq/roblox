@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -176,6 +177,64 @@ local function refresh()
 	end
 end
 
+-- Ruido de un Investigador: marca 3D en la posición aproximada y flecha en pantalla.
+local function showNoise(position: any, intensity: any)
+	if typeof(position) ~= "Vector3" or typeof(intensity) ~= "number" or not active() then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local strength = math.clamp(intensity, 0, 1)
+
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one
+	anchor.Position = position + Vector3.new(0, 2, 0)
+	local billboard = Instance.new("BillboardGui")
+	billboard.AlwaysOnTop = true
+	billboard.Size = UDim2.fromOffset(60 + 60 * strength, 60 + 60 * strength)
+	billboard.Parent = anchor
+	local ring = UIController.Label({
+		Text = "(( · ))",
+		TextScaled = true,
+		TextColor3 = Color3.fromRGB(255, 90, 80),
+		Size = UDim2.fromScale(1, 1),
+		Parent = billboard,
+	})
+	anchor.Parent = camera
+	TweenService:Create(ring, TweenInfo.new(1.6), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	task.delay(1.7, function()
+		anchor:Destroy()
+	end)
+
+	-- Flecha alrededor del centro de la pantalla hacia el ruido.
+	local look = camera.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local to = (position - camera.CFrame.Position) * Vector3.new(1, 0, 1)
+	if look.Magnitude < 0.01 or to.Magnitude < 0.01 then
+		return
+	end
+	look, to = look.Unit, to.Unit
+	local angle = math.atan2(look:Cross(to).Y, look:Dot(to))
+	local arrow = UIController.Label({
+		Text = "▲",
+		TextSize = 28 + 20 * strength,
+		TextColor3 = Color3.fromRGB(255, 90, 80),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		-- Ángulo positivo = a la izquierda.
+		Position = UDim2.new(0.5, -math.sin(angle) * 160, 0.5, -math.cos(angle) * 160),
+		Rotation = -math.deg(angle),
+		Size = UDim2.fromOffset(50, 50),
+		Parent = UIController.Gui(),
+	})
+	TweenService:Create(arrow, TweenInfo.new(1.4), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	task.delay(1.5, function()
+		arrow:Destroy()
+	end)
+end
+
 -- Visión nocturna de la Anomalía: una luz roja tenue que solo existe en su cliente.
 local function updateVision()
 	if active() then
@@ -238,6 +297,8 @@ function AnomalyController.Start()
 		currentProp = if typeof(propId) == "string" then propId else nil
 		morphedAt = os.clock()
 	end)
+
+	Remotes.Event("NoisePing").OnClientEvent:Connect(showNoise)
 
 	RunService.RenderStepped:Connect(updateHint)
 end

@@ -37,6 +37,7 @@ Config.Anomaly = {
 Config.Investigator = {
 	WalkSpeed = 13,
 	SprintSpeed = 20,
+	SneakSpeed = 7,
 	StaminaMax = 100,
 	StaminaDrain = 22, -- por segundo corriendo
 	StaminaRegen = 12,
@@ -52,6 +53,32 @@ Config.Investigator = {
 	EmfInterval = 0.4,
 	-- Umbrales de distancia para cada nivel del EMF (5 = muy cerca).
 	EmfLevels = { 8, 15, 25, 35, 45 },
+}
+
+-- Ruido: lo que la Anomalía "oye" como dirección aproximada. Voz, pasos y gritos.
+Config.Noise = {
+	TickInterval = 0.5,
+	MaxRange = 110, -- alcance con ruido 1.0
+	MinToPing = 0.15,
+	PingCooldown = 1.5, -- por Investigador
+	JitterBase = 3, -- error de la posición aproximada (studs)
+	JitterPerStud = 0.2,
+	Still = 0,
+	Sneak = 0.05,
+	Walk = 0.2,
+	Sprint = 0.7,
+	VoiceGain = 3, -- RmsLevel del micro * ganancia (se limita a 1)
+	VoiceHold = 0.6, -- segundos que dura una lectura de voz
+	EmoteCooldown = 4,
+	EmoteNoise = 1,
+	EmoteDuration = 2,
+	EmoteHearRange = 80,
+}
+
+Config.Emotes = {
+	Help = "¡AYUDA!",
+	Here = "¡POR AQUÍ!",
+	Run = "¡CORRED!",
 }
 
 Config.Sanity = {

@@ -19,6 +19,7 @@ local player = Players.LocalPlayer
 local InvestigatorController = {}
 
 local bound = false
+local sneaking = false
 local localLightPart: Part? = nil
 
 local function active(): boolean
@@ -81,7 +82,17 @@ local function handle(actionName: string, inputState: Enum.UserInputState, _inpu
 	if inputState ~= Enum.UserInputState.Begin then
 		return Enum.ContextActionResult.Pass
 	end
-	if actionName == "MM_Flashlight" then
+	if actionName == "MM_Sneak" then
+		sneaking = not sneaking
+		Remotes.Event("RequestSneak"):FireServer(sneaking)
+		UIController.Toast(if sneaking then "Sigilo: andas en silencio" else "Sigilo desactivado", "info")
+	elseif actionName == "MM_EmoteHelp" then
+		Remotes.Event("RequestEmote"):FireServer("Help")
+	elseif actionName == "MM_EmoteHere" then
+		Remotes.Event("RequestEmote"):FireServer("Here")
+	elseif actionName == "MM_EmoteRun" then
+		Remotes.Event("RequestEmote"):FireServer("Run")
+	elseif actionName == "MM_Flashlight" then
 		Remotes.Event("ToggleFlashlight"):FireServer(player:GetAttribute("Flashlight") ~= true)
 	elseif actionName == "MM_Camera" then
 		equip(Enums.Tool.Camera)
@@ -123,6 +134,15 @@ local function bind()
 	ContextActionService:BindAction("MM_Sprint", handle, true, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL3)
 	ContextActionService:SetTitle("MM_Sprint", "Correr")
 	ContextActionService:SetPosition("MM_Sprint", UDim2.new(1, -170, 1, -210))
+	ContextActionService:BindAction("MM_Sneak", handle, true, Enum.KeyCode.C, Enum.KeyCode.LeftControl, Enum.KeyCode.ButtonB)
+	ContextActionService:SetTitle("MM_Sneak", "Sigilo")
+	ContextActionService:SetPosition("MM_Sneak", UDim2.new(1, -230, 1, -210))
+	-- Gritos: la alternativa a la voz. Avisan a los tuyos pero hacen mucho ruido.
+	ContextActionService:BindAction("MM_EmoteHelp", handle, true, Enum.KeyCode.G, Enum.KeyCode.DPadUp)
+	ContextActionService:SetTitle("MM_EmoteHelp", "Grito")
+	ContextActionService:SetPosition("MM_EmoteHelp", UDim2.new(1, -110, 1, -210))
+	ContextActionService:BindAction("MM_EmoteHere", handle, false, Enum.KeyCode.H)
+	ContextActionService:BindAction("MM_EmoteRun", handle, false, Enum.KeyCode.J, Enum.KeyCode.DPadDown)
 end
 
 local function unbind()
@@ -130,9 +150,21 @@ local function unbind()
 		return
 	end
 	bound = false
-	for _, name in { "MM_Flashlight", "MM_Camera", "MM_EMF", "MM_CycleTool", "MM_Use", "MM_Sprint" } do
+	for _, name in {
+		"MM_Flashlight",
+		"MM_Camera",
+		"MM_EMF",
+		"MM_CycleTool",
+		"MM_Use",
+		"MM_Sprint",
+		"MM_Sneak",
+		"MM_EmoteHelp",
+		"MM_EmoteHere",
+		"MM_EmoteRun",
+	} do
 		ContextActionService:UnbindAction(name)
 	end
+	sneaking = false
 end
 
 local function refresh()
