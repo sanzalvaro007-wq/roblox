@@ -2,6 +2,7 @@
 -- Controles del Investigador (PC, mando y móvil). Solo envía peticiones;
 -- el servidor valida batería, carrete, cooldowns y si la foto acierta.
 
+local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -98,11 +99,16 @@ local function handle(actionName: string, inputState: Enum.UserInputState, _inpu
 		equip(Enums.Tool.Camera)
 	elseif actionName == "MM_EMF" then
 		equip(Enums.Tool.EMF)
+	elseif actionName == "MM_UV" then
+		equip(Enums.Tool.UV)
+	elseif actionName == "MM_Trap" then
+		Remotes.Event("PlaceTrap"):FireServer()
 	elseif actionName == "MM_CycleTool" then
 		local current = player:GetAttribute("EquippedTool")
 		local nextTool = if current == Enums.Tool.Camera
 			then Enums.Tool.EMF
-			elseif current == Enums.Tool.EMF then Enums.Tool.None
+			elseif current == Enums.Tool.EMF then Enums.Tool.UV
+			elseif current == Enums.Tool.UV then Enums.Tool.None
 			else Enums.Tool.Camera
 		Remotes.Event("EquipTool"):FireServer(nextTool)
 	elseif actionName == "MM_Use" then
@@ -125,6 +131,10 @@ local function bind()
 	ContextActionService:SetPosition("MM_Flashlight", UDim2.new(1, -170, 1, -150))
 	ContextActionService:BindAction("MM_Camera", handle, false, Enum.KeyCode.One, Enum.KeyCode.DPadLeft)
 	ContextActionService:BindAction("MM_EMF", handle, false, Enum.KeyCode.Two, Enum.KeyCode.DPadRight)
+	ContextActionService:BindAction("MM_UV", handle, false, Enum.KeyCode.Three)
+	ContextActionService:BindAction("MM_Trap", handle, true, Enum.KeyCode.T)
+	ContextActionService:SetTitle("MM_Trap", "Campana")
+	ContextActionService:SetPosition("MM_Trap", UDim2.new(1, -290, 1, -150))
 	ContextActionService:BindAction("MM_CycleTool", handle, true, Enum.KeyCode.ButtonX)
 	ContextActionService:SetTitle("MM_CycleTool", "Útil")
 	ContextActionService:SetPosition("MM_CycleTool", UDim2.new(1, -230, 1, -90))
@@ -154,6 +164,8 @@ local function unbind()
 		"MM_Flashlight",
 		"MM_Camera",
 		"MM_EMF",
+		"MM_UV",
+		"MM_Trap",
 		"MM_CycleTool",
 		"MM_Use",
 		"MM_Sprint",
@@ -182,8 +194,10 @@ local function updateLocalFlashlight()
 	local character = player.Character
 	local head = if character then character:FindFirstChild("Head") else nil
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
+	local angle, range = 55, 45
 	if serverLight and serverLight:IsA("SpotLight") then
 		serverLight.Brightness = if on then 0 else 2.2
+		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
 	end
 	if on then
 		if not localLightPart then
@@ -208,10 +222,51 @@ local function updateLocalFlashlight()
 		end
 		local part = localLightPart :: Part
 		part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0.6, -0.5, 0)
+		local light = part:FindFirstChildOfClass("SpotLight")
+		if light then
+			light.Angle = angle
+			light.Range = range
+		end
 	elseif localLightPart then
 		localLightPart:Destroy()
 		localLightPart = nil
 	end
+end
+
+-- Luz UV: las huellas de la Anomalía (invisibles para todos) se ven solo en este cliente,
+-- dentro del cono de la cámara y del alcance (mayor con el gamepass UV Pro).
+local revealed: { [BasePart]: boolean } = {}
+local function updateUv()
+	local battery = player:GetAttribute("Battery")
+	local on = active()
+		and player:GetAttribute("EquippedTool") == Enums.Tool.UV
+		and typeof(battery) == "number"
+		and battery > 0
+	local camera = workspace.CurrentCamera
+	local range = if player:GetAttribute("UVPro") == true then Config.Investigator.UvRangePro else Config.Investigator.UvRange
+	local seen: { [BasePart]: boolean } = {}
+	if on then
+		for _, footprint in CollectionService:GetTagged("Footprint") do
+			if footprint:IsA("BasePart") then
+				local offset = footprint.Position - camera.CFrame.Position
+				local dist = offset.Magnitude
+				if dist <= range and dist > 0 and camera.CFrame.LookVector:Dot(offset.Unit) > 0.75 then
+					-- Más tenue cuanto más lejos o más vieja.
+					local created = footprint:GetAttribute("CreatedAt")
+					local age = if typeof(created) == "number" then workspace:GetServerTimeNow() - created else 0
+					local fade = math.clamp(age / Config.Investigator.FootprintLifetime, 0, 1)
+					footprint.Transparency = math.clamp(0.1 + 0.6 * (dist / range) + 0.3 * fade, 0, 0.95)
+					seen[footprint] = true
+				end
+			end
+		end
+	end
+	for footprint in revealed do
+		if not seen[footprint] and footprint.Parent then
+			footprint.Transparency = 1
+		end
+	end
+	revealed = seen
 end
 
 function InvestigatorController.Start()
@@ -230,6 +285,7 @@ function InvestigatorController.Start()
 	end)
 
 	RunService.RenderStepped:Connect(updateLocalFlashlight)
+	RunService.RenderStepped:Connect(updateUv)
 end
 
 return InvestigatorController

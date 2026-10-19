@@ -15,6 +15,7 @@ local Enums = require(Shared:WaitForChild("Enums"))
 local PropCatalog = require(Shared:WaitForChild("PropCatalog"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local ProfileController = require(script.Parent:WaitForChild("ProfileController"))
 local UIController = require(script.Parent:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
@@ -37,6 +38,18 @@ end
 
 local function setMenu(open: boolean)
 	menu.Visible = open
+	if not open then
+		return
+	end
+	-- Las formas del gacha aparecen bloqueadas si no son tuyas.
+	for i, def in PropCatalog.List do
+		local button = menu:FindFirstChild(def.id)
+		if button and button:IsA("TextButton") then
+			local locked = def.cosmetic == true and not ProfileController.Owns("Form_" .. def.id)
+			button.Text = string.format("%s%s%s", if i <= 9 then i .. " · " else "", def.name, if locked then " 🔒" else "")
+			button.TextTransparency = if locked then 0.5 else 0
+		end
+	end
 end
 
 local function buildUi()
@@ -47,7 +60,7 @@ local function buildUi()
 		BackgroundTransparency = 0.2,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.55),
-		Size = UDim2.new(0, 480, 0, 250),
+		Size = UDim2.new(0, 480, 0, 300),
 		Visible = false,
 		Parent = gui,
 	}, {

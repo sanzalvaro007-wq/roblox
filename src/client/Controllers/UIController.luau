@@ -280,13 +280,14 @@ local function build()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -16),
-		Size = UDim2.new(0, 320, 0, 56),
+		Size = UDim2.new(0, 420, 0, 56),
 		Visible = false,
 		Parent = gui,
 	}, { make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }) })
 	makeSlot(Enums.Tool.Camera, "1", "Cámara", 1)
 	makeSlot(Enums.Tool.EMF, "2", "EMF", 2)
-	makeSlot("Flashlight", "F", "Linterna", 3)
+	makeSlot(Enums.Tool.UV, "3", "Luz UV", 3)
+	makeSlot("Flashlight", "F", "Linterna", 4)
 
 	emfMeter = make("Frame", {
 		Name = "EMF",

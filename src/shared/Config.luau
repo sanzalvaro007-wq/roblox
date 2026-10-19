@@ -50,9 +50,15 @@ Config.Investigator = {
 	PhotoRange = 40,
 	PhotoConeDegrees = 32,
 	EmfRange = 45,
-	EmfInterval = 0.4,
+	EmfInterval = 0.25, -- el EMF mejorado lee en cada tick; el normal, uno de cada dos
 	-- Umbrales de distancia para cada nivel del EMF (5 = muy cerca).
 	EmfLevels = { 8, 15, 25, 35, 45 },
+	UvDrain = 0.8, -- por segundo de batería con la luz UV equipada
+	UvRange = 14,
+	UvRangePro = 20, -- gamepass "Luz UV Pro"
+	FootprintInterval = 0.6,
+	FootprintLifetime = 25,
+	FootprintMax = 60,
 }
 
 -- Ruido: lo que la Anomalía "oye" como dirección aproximada. Voz, pasos y gritos.

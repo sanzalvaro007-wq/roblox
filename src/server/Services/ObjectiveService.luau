@@ -13,7 +13,10 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local PlayerUtil = require(script.Parent.Parent:WaitForChild("Util"):WaitForChild("PlayerUtil"))
 local CharacterService = require(script.Parent:WaitForChild("CharacterService"))
+local DataService = require(script.Parent:WaitForChild("DataService"))
+local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local ToolService = require(script.Parent:WaitForChild("ToolService"))
+local ShopCatalog = require(Shared:WaitForChild("ShopCatalog"))
 
 type Mansion = {
 	Model: Model,
@@ -208,6 +211,7 @@ local function buildFuseBox(cf: CFrame, required: number)
 			return
 		end
 		setCarrying(player, false)
+		EconomyService.Award(player, ShopCatalog.Rewards.Fuse, "Fusibles colocados")
 		inserted += 1
 		ReplicatedStorage:SetAttribute("FusesInserted", inserted)
 		updateFuseLights()
@@ -249,6 +253,8 @@ end
 
 function ObjectiveService.Escape(player: Player)
 	player:SetAttribute("Escaped", true)
+	EconomyService.Award(player, ShopCatalog.Rewards.Escape, "Escape")
+	DataService.AddStat(player, "escapes", 1)
 	setCarrying(player, false)
 	ToolService.Reset(player)
 	CharacterService.MoveToLobby(player)

@@ -63,9 +63,12 @@ local function playKillCam(killer: any, propId: any)
 	local killerRoot = if typeof(killer) == "Instance" and killer:IsA("Model") then killer:FindFirstChild("HumanoidRootPart") else nil
 	local target = if killerRoot and killerRoot:IsA("BasePart") then killerRoot.Position else from + camera.CFrame.LookVector * 5
 
-	UIController.Flash(Color3.fromRGB(160, 0, 0), 1.2, 0)
 	local def = if typeof(propId) == "string" then PropCatalog.Get(propId) else nil
-	UIController.Splash(if def then ("Devorado por: " .. def.name) else "Te ha atrapado", Color3.fromRGB(240, 70, 60))
+	-- Las formas cosméticas tienen su propia kill cam.
+	local color = if def and def.killColor then def.killColor else Color3.fromRGB(240, 70, 60)
+	UIController.Flash(color:Lerp(Color3.new(0, 0, 0), 0.35), 1.2, 0)
+	local text = if def and def.killCam then def.killCam elseif def then ("Devorado por: " .. def.name) else "Te ha atrapado"
+	UIController.Splash(text, color)
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = Config.Sounds.Scream

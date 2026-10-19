@@ -15,6 +15,9 @@ local Guard = require(Util:WaitForChild("Guard"))
 local PlayerUtil = require(Util:WaitForChild("PlayerUtil"))
 local MorphService = require(script.Parent:WaitForChild("MorphService"))
 local SanityService = require(script.Parent:WaitForChild("SanityService"))
+local DataService = require(script.Parent:WaitForChild("DataService"))
+local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
+local ShopCatalog = require(Shared:WaitForChild("ShopCatalog"))
 
 local A = Config.Anomaly
 
@@ -72,6 +75,10 @@ function CombatService.Kill(victim: Player, killer: Player?, propId: string?)
 	Remotes.Event("KillCam"):FireClient(victim, if killer then killer.Character else nil, propId)
 	humanoid.Health = 0
 	SanityService.WitnessKill(position, victim)
+	if killer then
+		EconomyService.Award(killer, ShopCatalog.Rewards.AnomalyKill, "Eliminaciones")
+		DataService.AddStat(killer, "kills", 1)
+	end
 end
 
 local function onAttack(player: Player)

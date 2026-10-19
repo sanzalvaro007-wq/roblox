@@ -11,6 +11,9 @@ local Services = script:WaitForChild("Services")
 local ORDER = {
 	"AtmosphereService",
 	"CharacterService",
+	"DataService",
+	"EconomyService",
+	"ShopService",
 	"MansionService",
 	"RoleService",
 	"MorphService",
@@ -20,7 +23,10 @@ local ORDER = {
 	"NoiseService",
 	"GhostService",
 	"ObjectiveService",
+	"FootprintService",
+	"TrapService",
 	"RoundService",
+	"MonetizationService",
 }
 
 local loaded = {}

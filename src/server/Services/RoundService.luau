@@ -15,6 +15,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local PlayerUtil = require(script.Parent.Parent:WaitForChild("Util"):WaitForChild("PlayerUtil"))
 local CharacterService = require(script.Parent:WaitForChild("CharacterService"))
+local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local GhostService = require(script.Parent:WaitForChild("GhostService"))
 local MansionService = require(script.Parent:WaitForChild("MansionService"))
 local MorphService = require(script.Parent:WaitForChild("MorphService"))
@@ -27,6 +28,9 @@ local ToolService = require(script.Parent:WaitForChild("ToolService"))
 local R = Config.Round
 
 local RoundService = {}
+
+local reviveHandler: ((Player) -> boolean)? = nil
+local endedCallbacks: { () -> () } = {}
 
 local function setState(state: string, duration: number?)
 	ReplicatedStorage:SetAttribute("RoundState", state)
@@ -126,6 +130,19 @@ local function runRound()
 	end
 	table.insert(connections, Players.PlayerRemoving:Connect(onLost))
 
+	-- Revive Token: un fantasma vuelve al vestíbulo como Investigador.
+	reviveHandler = function(player: Player): boolean
+		if not table.find(assignment.investigators, player) or player:GetAttribute("Ghost") ~= true then
+			return false
+		end
+		GhostService.Revived(player)
+		spawnInvestigator(player, mansion.InvestigatorSpawns[1])
+		player:SetAttribute("Sanity", Config.Sanity.Max / 2)
+		watchDeath(player)
+		Remotes.Event("Notify"):FireAllClients(player.DisplayName .. " ha vuelto de entre los muertos", "info")
+		return true
+	end
+
 	ObjectiveService.Setup(mansion :: any, #assignment.investigators)
 
 	-- Preparación: la Anomalía se esconde; los Investigadores esperan congelados.
@@ -171,6 +188,12 @@ local function runRound()
 			table.insert(eliminatedNames, player.DisplayName)
 		end
 	end
+	reviveHandler = nil
+	EconomyService.FinishRound({
+		anomaly = assignment.anomaly,
+		investigators = assignment.investigators,
+		winner = winner,
+	})
 	Remotes.Event("RoundResult"):FireAllClients({
 		winner = winner,
 		reason = reason,
@@ -201,6 +224,17 @@ local function runRound()
 	end
 	ObjectiveService.Cleanup()
 	MansionService.Destroy()
+	for _, callback in endedCallbacks do
+		task.spawn(callback)
+	end
+end
+
+function RoundService.Revive(player: Player): boolean
+	return if reviveHandler then reviveHandler(player) else false
+end
+
+function RoundService.OnRoundEnded(callback: () -> ())
+	table.insert(endedCallbacks, callback)
 end
 
 function RoundService.Init()
@@ -216,6 +250,7 @@ function RoundService.Start()
 					warn("[RoundService] error en la ronda:", err, debug.traceback())
 				end)
 				if not ok then
+					reviveHandler = nil
 					MansionService.Destroy()
 					GhostService.ResetAll()
 					for _, player in Players:GetPlayers() do

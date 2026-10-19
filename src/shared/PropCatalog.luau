@@ -19,6 +19,11 @@ export type PropDef = {
 	footprint: Vector3, -- caja aproximada para colocarlo en las salas
 	againstWall: boolean, -- los señuelos de este tipo se colocan pegados a la pared
 	parts: { PropPart },
+	-- Formas cosméticas (gacha): siempre aparecen como señuelos en la mansión para que no
+	-- sean un "tell", pero solo quien las tiene puede transformarse en ellas.
+	cosmetic: boolean?,
+	killCam: string?, -- texto propio de la kill cam
+	killColor: Color3?,
 }
 
 local WOOD = Color3.fromRGB(92, 64, 46)
@@ -165,6 +170,51 @@ local list: { PropDef } = {
 			part("Books1", Vector3.new(4.4, 1.4, 0.2), Vector3.new(0, 1.3, -0.65), Color3.fromRGB(90, 30, 30), Enum.Material.Fabric),
 			part("Books2", Vector3.new(4.4, 1.4, 0.2), Vector3.new(0, 3.3, -0.65), Color3.fromRGB(30, 60, 40), Enum.Material.Fabric),
 			part("Books3", Vector3.new(4.4, 1.4, 0.2), Vector3.new(0, 5.3, -0.65), Color3.fromRGB(40, 40, 80), Enum.Material.Fabric),
+		},
+	},
+	{
+		id = "CuckooClock",
+		name = "Reloj de cuco",
+		footprint = Vector3.new(2.4, 7.5, 1.4),
+		againstWall = true,
+		cosmetic = true,
+		killCam = "El cuco ha dado tu hora",
+		killColor = Color3.fromRGB(230, 170, 60),
+		parts = {
+			part("Post", Vector3.new(0.5, 4.5, 0.5), Vector3.new(0, 2.25, 0.2), DARK_WOOD),
+			part("House", Vector3.new(2.4, 2.4, 1.4), Vector3.new(0, 5.7, 0), WOOD),
+			part("Roof", Vector3.new(2.8, 0.4, 1.6), Vector3.new(0, 7.1, 0), DARK_WOOD),
+			part("Dial", Vector3.new(1.2, 1.2, 0.1), Vector3.new(0, 5.6, -0.72), PORCELAIN, Enum.Material.SmoothPlastic),
+			part("Door", Vector3.new(0.5, 0.5, 0.1), Vector3.new(0, 6.6, -0.72), Color3.fromRGB(30, 20, 15)),
+		},
+	},
+	{
+		id = "CursedMirror",
+		name = "Espejo maldito",
+		footprint = Vector3.new(3, 7, 0.8),
+		againstWall = true,
+		cosmetic = true,
+		killCam = "Tu reflejo te ha sustituido",
+		killColor = Color3.fromRGB(150, 200, 255),
+		parts = {
+			part("Frame", Vector3.new(3, 7, 0.5), Vector3.new(0, 3.5, 0.1), BRASS, Enum.Material.Metal),
+			part("Glass", Vector3.new(2.5, 6.4, 0.1), Vector3.new(0, 3.5, -0.2), Color3.fromRGB(170, 185, 195), Enum.Material.Glass),
+			part("Foot", Vector3.new(2, 0.3, 0.8), Vector3.new(0, 0.15, 0), DARK_WOOD),
+		},
+	},
+	{
+		id = "BloodyStatue",
+		name = "Estatua sangrienta",
+		footprint = Vector3.new(2.2, 7, 2.2),
+		againstWall = false,
+		cosmetic = true,
+		killCam = "La estatua ha llorado sangre",
+		killColor = Color3.fromRGB(200, 20, 20),
+		parts = {
+			part("Base", Vector3.new(2.2, 1, 2.2), Vector3.new(0, 0.5, 0), STONE, Enum.Material.Marble),
+			part("Robe", Vector3.new(1.6, 4, 1.2), Vector3.new(0, 3, 0), STONE, Enum.Material.Marble),
+			part("Head", Vector3.new(1, 1, 1), Vector3.new(0, 5.6, 0), STONE, Enum.Material.Marble, "Ball"),
+			part("Tears", Vector3.new(0.5, 0.6, 0.05), Vector3.new(0, 5.4, -0.5), Color3.fromRGB(120, 0, 0), Enum.Material.SmoothPlastic),
 		},
 	},
 }

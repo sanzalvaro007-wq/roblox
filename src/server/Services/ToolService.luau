@@ -10,10 +10,13 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Enums = require(Shared:WaitForChild("Enums"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local ShopCatalog = require(Shared:WaitForChild("ShopCatalog"))
 
 local Util = script.Parent.Parent:WaitForChild("Util")
 local Guard = require(Util:WaitForChild("Guard"))
 local PlayerUtil = require(Util:WaitForChild("PlayerUtil"))
+local DataService = require(script.Parent:WaitForChild("DataService"))
+local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local MorphService = require(script.Parent:WaitForChild("MorphService"))
 
 local I = Config.Investigator
@@ -24,6 +27,8 @@ local lastPhoto: { [Player]: number } = {}
 local sprintWanted: { [Player]: boolean } = {}
 local sneakWanted: { [Player]: boolean } = {}
 local moveNoise: { [Player]: number } = {}
+local drainMultiplier: { [Player]: number } = {}
+local emfPro: { [Player]: boolean } = {}
 
 local function flashlightOf(player: Player): SpotLight?
 	local head = PlayerUtil.Head(player)
@@ -41,7 +46,14 @@ end
 
 function ToolService.Setup(player: Player)
 	player:SetAttribute("Battery", I.BatteryMax)
-	player:SetAttribute("Film", I.Film)
+	-- Equipo comprado en la tienda (sidegrades, nunca decisivo).
+	local data = DataService.Get(player)
+	local flashlightId = if data then data.equipped.Flashlight else "Default"
+	local variant = (ShopCatalog.Flashlights :: any)[flashlightId] or ShopCatalog.Flashlights.Default
+	drainMultiplier[player] = variant.drain
+	emfPro[player] = data ~= nil and data.equipped.EMF == "EMF_Pro" and data.owned.EMF_Pro == true
+	local extraFilm = if data and data.owned.Film_Extra then 1 else 0
+	player:SetAttribute("Film", I.Film + extraFilm)
 	player:SetAttribute("Stamina", I.StaminaMax)
 	player:SetAttribute("EquippedTool", Enums.Tool.None)
 	player:SetAttribute("Flashlight", false)
@@ -52,8 +64,8 @@ function ToolService.Setup(player: Player)
 	if head and not head:FindFirstChild("Flashlight") then
 		local light = Instance.new("SpotLight")
 		light.Name = "Flashlight"
-		light.Angle = 55
-		light.Range = 45
+		light.Angle = variant.angle
+		light.Range = variant.range
 		light.Brightness = 2.2
 		light.Color = Color3.fromRGB(255, 240, 210)
 		light.Shadows = true
@@ -71,6 +83,8 @@ function ToolService.Reset(player: Player)
 	sprintWanted[player] = nil
 	sneakWanted[player] = nil
 	moveNoise[player] = nil
+	drainMultiplier[player] = nil
+	emfPro[player] = nil
 	lastPhoto[player] = nil
 end
 
@@ -173,6 +187,7 @@ local function onPhoto(player: Player, look: any)
 				if wasMorphed then Config.Anomaly.PhotoStunTime else Config.Anomaly.PhotoStunTimeUnmorphed
 			)
 			MorphService.Reveal(anomaly, Config.Anomaly.PhotoRevealTime)
+			EconomyService.Award(player, ShopCatalog.Rewards.PhotoHit, "Fotos a la Anomalía")
 			Remotes.Event("Notify"):FireClient(
 				anomaly,
 				if stunned then "¡Un flash te ha revelado!" else "Un flash te ha revelado (inmune al aturdimiento)",
@@ -183,10 +198,11 @@ local function onPhoto(player: Player, look: any)
 	Remotes.Event("PhotoResult"):FireClient(player, hit)
 end
 
-local function emfLevel(distance: number, morphed: boolean): number
+local function emfLevel(distance: number, morphed: boolean, pro: boolean): number
 	local level = 0
+	local scale = if pro then 1.15 else 1
 	for i, threshold in I.EmfLevels do
-		if distance <= threshold then
+		if distance <= threshold * scale then
 			level = #I.EmfLevels - i + 1
 			break
 		end
@@ -249,7 +265,7 @@ function ToolService.Init()
 		if typeof(tool) ~= "string" or not Guard.RateLimit(player, "Equip", 0.15) then
 			return
 		end
-		if tool ~= Enums.Tool.None and tool ~= Enums.Tool.Camera and tool ~= Enums.Tool.EMF then
+		if tool ~= Enums.Tool.None and tool ~= Enums.Tool.Camera and tool ~= Enums.Tool.EMF and tool ~= Enums.Tool.UV then
 			return
 		end
 		if PlayerUtil.IsInvestigator(player) then
@@ -295,10 +311,18 @@ function ToolService.Init()
 			end
 			for _, player in PlayerUtil.Investigators() do
 				updateMovement(player, dt, state)
-				if player:GetAttribute("Flashlight") == true then
+				local uvOn = player:GetAttribute("EquippedTool") == Enums.Tool.UV
+				if player:GetAttribute("Flashlight") == true or uvOn then
 					local battery = player:GetAttribute("Battery")
-					if typeof(battery) == "number" then
-						battery = math.max(0, battery - I.BatteryDrain * dt)
+					if typeof(battery) == "number" and battery > 0 then
+						local drain = 0
+						if player:GetAttribute("Flashlight") == true then
+							drain += I.BatteryDrain * (drainMultiplier[player] or 1)
+						end
+						if uvOn then
+							drain += I.UvDrain
+						end
+						battery = math.max(0, battery - drain * dt)
 						player:SetAttribute("Battery", battery)
 						if battery <= 0 then
 							setFlashlight(player, false)
@@ -312,8 +336,10 @@ function ToolService.Init()
 
 	-- EMF: solo se envía al dueño del detector.
 	task.spawn(function()
+		local tickCount = 0
 		while true do
 			task.wait(I.EmfInterval)
+			tickCount += 1
 			if ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
 				continue
 			end
@@ -321,11 +347,12 @@ function ToolService.Init()
 			local anomalyRoot = if anomaly then PlayerUtil.Root(anomaly) else nil
 			local morphed = anomaly ~= nil and MorphService.IsMorphed(anomaly)
 			for _, player in PlayerUtil.Investigators() do
-				if player:GetAttribute("EquippedTool") == Enums.Tool.EMF then
+				local pro = emfPro[player] == true
+				if player:GetAttribute("EquippedTool") == Enums.Tool.EMF and (pro or tickCount % 2 == 0) then
 					local root = PlayerUtil.Root(player)
 					local level = 0
 					if root and anomalyRoot then
-						level = emfLevel((anomalyRoot.Position - root.Position).Magnitude, morphed)
+						level = emfLevel((anomalyRoot.Position - root.Position).Magnitude, morphed, pro)
 					end
 					Remotes.Event("EmfReading"):FireClient(player, level)
 				end
@@ -338,6 +365,8 @@ function ToolService.Init()
 		sprintWanted[player] = nil
 		sneakWanted[player] = nil
 		moveNoise[player] = nil
+		drainMultiplier[player] = nil
+		emfPro[player] = nil
 	end)
 end
 

@@ -21,6 +21,7 @@ Enums.Tool = {
 	None = "None",
 	Camera = "Camera",
 	EMF = "EMF",
+	UV = "UV",
 }
 
 Enums.Winner = {

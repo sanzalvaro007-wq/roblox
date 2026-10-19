@@ -2,9 +2,9 @@
 
 Juego de terror asimétrico y escondite para Roblox: una Anomalía que se transforma en muebles contra Investigadores que intentan escapar de una mansión victoriana. Clasificación objetivo: 13+.
 
-## Estado: Fase 1 (prototipo gris jugable)
+## Estado: Fases 1 a 4 en código (placeholders grises, sin modelos de Blender todavía)
 
-Ronda completa de principio a fin con placeholders grises (sin modelos de Blender todavía):
+### Fase 1: prototipo jugable
 
 - **Ronda**: lobby → cuenta atrás → 15 s de preparación (la Anomalía se esconde, los Investigadores a oscuras) → 10 min de partida → resultados → lobby.
 - **Victoria**: los Investigadores ganan si escapa al menos 1. La Anomalía gana si nadie escapa (todos eliminados o tiempo agotado).
@@ -14,6 +14,23 @@ Ronda completa de principio a fin con placeholders grises (sin modelos de Blende
 - **Cordura**: baja con la oscuridad, la soledad y la Anomalía cerca, y sube en grupo y con luz. Por debajo de 60/35/15 aparecen pasos falsos, figuras, muebles que se acercan y un EMF que miente, **solo en el cliente de ese jugador**.
 - **Objetivo**: recoger fusibles (3 + 1 por cada 3 Investigadores), colocarlos en la caja, restaurar la energía y escapar por la puerta principal.
 
+### Fase 2: ruido y voz
+- **Voz posicional** opcional con la Audio API de Roblox (13+, verificación de edad de Roblox). El volumen de tu micro se convierte en ruido.
+- **Sin voz** se juega igual: el ruido sale de los pasos (quieto, sigilo, andar o correr) y de los gritos (¡Ayuda!, ¡Por aquí! y ¡Corred!), que tus compañeros ven como bocadillos.
+- La Anomalía recibe una **posición aproximada** del ruido (marca 3D y flecha en pantalla), nunca la exacta.
+
+### Fase 3: fantasma vengativo
+- Al morir vuelves como fantasma: invisible e inaudible para los vivos, y tu voz solo la oyen otros fantasmas.
+- Puedes apagar una lámpara cercana (Z) o dejar un susurro de niebla fría como pista (X). Las dos acciones tienen cooldown largo y las ve todo el mundo.
+
+### Fase 4: economía, tienda, gacha y Robux
+- **DataService**: guardado con bloqueo de sesión, reintentos, autoguardado y guardado al cerrar el servidor. En Studio sin acceso a APIs funciona en memoria.
+- **Monedas** que solo se ganan jugando: participación, fusibles, fotos, escape, eliminaciones y victoria.
+- **Tienda** (B en el lobby) con mejoras laterales: farol, linterna táctica, EMF mejorado, carrete extra y campana trampa consumible.
+- **Gacha "Cofre maldito"**: reloj de cuco, espejo maldito y estatua sangrienta, cada uno con su kill cam. Las probabilidades se ven siempre antes de abrirlo, y las repetidas devuelven monedas. Como las monedas no se venden por Robux, no cuenta como "paid random item"; si algún día se venden, el cofre se bloquea donde `PolicyService` lo exija. Las formas cosméticas aparecen como muebles en todas las mansiones, así que no delatan a nadie.
+- **Luz UV** (tecla 3) que revela las huellas de la Anomalía a costa de batería. El gamepass **Luz UV Pro** amplía el alcance.
+- **Revive Token** (DevProduct): con R, siendo fantasma, vuelves al vestíbulo; máximo uno por partida. Para activarlos, pon los ids en `ShopCatalog.Monetization`.
+
 Todo es autoritativo en el servidor: el cliente solo pide acciones y el servidor valida rol, estado, cooldowns, distancia y línea de visión. El cliente nunca recibe la posición de la Anomalía, solo el nivel del EMF.
 
 ## Controles
@@ -21,13 +38,17 @@ Todo es autoritativo en el servidor: el cliente solo pide acciones y el servidor
 | Acción | Investigador | Anomalía |
 |---|---|---|
 | Linterna | F | |
-| Cámara / EMF | 1 / 2 | |
+| Cámara / EMF / Luz UV | 1 / 2 / 3 | |
+| Sigilo | C | |
+| Gritos | G / H / J | |
+| Campana trampa | T | |
 | Hacer foto | Clic (con la cámara) | |
 | Correr | Shift | |
 | Menú de formas | | Q (y 1-9 dentro del menú) |
 | Volver a la forma normal | | E |
 | Atacar | | Clic |
-| Cambiar espectador | ← / → | |
+| Fantasma: lámpara / susurro / revivir | Z / X / R | |
+| Tienda (lobby) | B | B |
 
 En móvil aparecen botones táctiles, y también funciona con mando.
 
@@ -44,19 +65,21 @@ Todos los números de equilibrio están en `src/shared/Config.luau`.
 
 ```bash
 luau tests/MansionLayout.spec.luau                         # 2000 semillas del generador
+luau tests/ShopCatalog.spec.luau                           # probabilidades del gacha
 rojo build -o build/MimicManor.rbxlx && lune run tests/run_mansion.luau build/MimicManor.rbxlx   # 200 mansiones construidas de verdad
 ```
 
 ## Estructura
 
-- `src/shared`: `Config`, `Enums`, `Remotes` (lista única de remotes) y `PropCatalog` (formas y muebles).
-- `src/server/Services`: `RoundService`, `RoleService`, `CharacterService`, `MansionService`, `MorphService`, `CombatService`, `ToolService`, `SanityService`, `ObjectiveService`, `AtmosphereService`.
+- `src/shared`: `Config`, `Enums`, `Remotes` (lista única de remotes), `PropCatalog` (formas y muebles) y `ShopCatalog` (tienda, gacha y recompensas).
+- `src/server/Services`: `RoundService`, `RoleService`, `CharacterService`, `MansionService`, `MorphService`, `CombatService`, `ToolService`, `SanityService`, `ObjectiveService`, `NoiseService`, `GhostService`, `DataService`, `EconomyService`, `ShopService`, `MonetizationService`, `FootprintService`, `TrapService` y `AtmosphereService`.
 - `src/server/Mansion`: `MansionLayout` (lógica pura y testeable) y `MansionBuilder` (piezas de Roblox).
-- `src/client/Controllers`: `UIController` (HUD), `InvestigatorController`, `AnomalyController`, `SanityController` (alucinaciones), `CameraController` (kill cam y espectador) y `AmbienceController` (parpadeo de luces).
+- `src/client/Controllers`: `UIController` (HUD), `InvestigatorController`, `AnomalyController`, `SanityController` (alucinaciones), `CameraController` (kill cam y espectador), `AmbienceController` (parpadeo de luces), `VoiceController`, `GhostController`, `ProfileController` y `ShopController`.
 - `docs/`: documentación del juego; ábrela como vault de Obsidian.
 
-## Próximas fases
+## Siguiente (Fase 5)
 
-- **Fase 2**: voz posicional (el ruido delata tu dirección a la Anomalía) con alternativa sin voz (pasos, correr, emotes de pánico).
-- **Fase 3**: fantasma vengativo (pistas menores, luces con cooldown).
-- **Fase 4**: DataService (guardado), monedas, tienda, gacha de formas cosméticas con probabilidades visibles y respetando las políticas de Roblox.
+- Probar en Studio con varios clientes y ajustar los números de `Config.luau`.
+- Sustituir los placeholders por los modelos de Blender (mismos nombres de pieza en `PropCatalog`) y añadir audio propio.
+- Crear el gamepass y el DevProduct en el Creator Dashboard y poner sus ids.
+- Rellenar el cuestionario de madurez de la experiencia para la clasificación 13+.

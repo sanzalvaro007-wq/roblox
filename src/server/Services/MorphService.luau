@@ -16,6 +16,7 @@ local Util = script.Parent.Parent:WaitForChild("Util")
 local Guard = require(Util:WaitForChild("Guard"))
 local PlayerUtil = require(Util:WaitForChild("PlayerUtil"))
 local CharacterService = require(script.Parent:WaitForChild("CharacterService"))
+local ShopService = require(script.Parent:WaitForChild("ShopService"))
 
 type MorphState = {
 	propId: string?,
@@ -125,6 +126,9 @@ function MorphService.Morph(player: Player, propId: string): (boolean, string?)
 	end
 	if not PlayerUtil.IsAnomaly(player) or not roundActive() then
 		return false, nil
+	end
+	if not ShopService.CanUseForm(player, propId) then
+		return false, "Esa forma se consigue en el Cofre maldito"
 	end
 	if os.clock() < s.stunnedUntil then
 		return false, "Estás aturdida"

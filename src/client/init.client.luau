@@ -3,6 +3,7 @@
 local Controllers = script:WaitForChild("Controllers")
 
 local ORDER = {
+	"ProfileController",
 	"UIController",
 	"AmbienceController",
 	"InvestigatorController",
@@ -11,6 +12,7 @@ local ORDER = {
 	"CameraController",
 	"VoiceController",
 	"GhostController",
+	"ShopController",
 }
 
 local loaded = {}

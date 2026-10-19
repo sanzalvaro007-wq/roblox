@@ -163,6 +163,12 @@ function GhostService.Reset(player: Player)
 	lastWhisper[player] = nil
 end
 
+-- Un fantasma revive (Revive Token): vuelve a oír y ser oído por los vivos.
+function GhostService.Revived(player: Player)
+	GhostService.Reset(player)
+	updateVoiceAccess()
+end
+
 function GhostService.ResetAll()
 	for _, p in Players:GetPlayers() do
 		GhostService.Reset(p)

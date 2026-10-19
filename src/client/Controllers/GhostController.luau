@@ -32,7 +32,11 @@ local function handle(actionName: string, inputState: Enum.UserInputState, _inpu
 	if inputState ~= Enum.UserInputState.Begin or not localIsGhost() then
 		return Enum.ContextActionResult.Pass
 	end
-	Remotes.Event("GhostAction"):FireServer(if actionName == "MM_GhostLight" then "Light" else "Whisper")
+	if actionName == "MM_GhostRevive" then
+		Remotes.Event("UseRevive"):FireServer()
+	else
+		Remotes.Event("GhostAction"):FireServer(if actionName == "MM_GhostLight" then "Light" else "Whisper")
+	end
 	return Enum.ContextActionResult.Sink
 end
 
@@ -45,11 +49,13 @@ local function refresh()
 		ContextActionService:BindAction("MM_GhostWhisper", handle, true, Enum.KeyCode.X, Enum.KeyCode.ButtonY)
 		ContextActionService:SetTitle("MM_GhostWhisper", "Susurro")
 		ContextActionService:SetPosition("MM_GhostWhisper", UDim2.new(1, -110, 1, -150))
+		ContextActionService:BindAction("MM_GhostRevive", handle, false, Enum.KeyCode.R)
 		ProximityPromptService.Enabled = false
 	elseif not localIsGhost() and bound then
 		bound = false
 		ContextActionService:UnbindAction("MM_GhostLight")
 		ContextActionService:UnbindAction("MM_GhostWhisper")
+		ContextActionService:UnbindAction("MM_GhostRevive")
 		ProximityPromptService.Enabled = true
 	end
 end
@@ -92,7 +98,7 @@ function GhostController.Start()
 		Position = UDim2.new(0.5, 0, 1, -24),
 		Size = UDim2.new(0, 700, 0, 30),
 		TextSize = 20,
-		Text = "Eres un fantasma · Z: encender/apagar lámpara · X: susurro (pista para los vivos)",
+		Text = "Eres un fantasma · Z: lámpara · X: susurro (pista) · R: Revive Token",
 		Visible = false,
 		Parent = UIController.Gui(),
 	})

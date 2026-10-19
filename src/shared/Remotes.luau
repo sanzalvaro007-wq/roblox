@@ -17,6 +17,11 @@ local EVENTS = {
 	"RequestSneak", -- (on: boolean)
 	"RequestEmote", -- (kind: string) gritos para quien juega sin voz
 	"GhostAction", -- (kind: "Light" | "Whisper")
+	"ShopPurchase", -- (itemId: string)
+	"ShopEquip", -- (slot: string, itemId: string)
+	"GachaRoll", -- ()
+	"UseRevive", -- () siendo fantasma
+	"PlaceTrap", -- ()
 
 	-- Servidor -> Cliente
 	"Notify", -- (text: string, kind: string?)
@@ -28,6 +33,10 @@ local EVENTS = {
 	"RoundResult", -- (result: table)
 	"RoleAssigned", -- (role: string)
 	"NoisePing", -- (approxPosition: Vector3, intensity: number) solo a la Anomalía
+	"ProfileSync", -- (snapshot: table) monedas, inventario, equipo
+	"ShopResult", -- (ok: boolean, message: string)
+	"GachaResult", -- (formId: string, duplicate: boolean, refund: number)
+	"RoundEarnings", -- (lines: { {reason: string, amount: number} })
 }
 
 -- Mensajes frecuentes donde perder alguno no importa.
