@@ -15,6 +15,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local PlayerUtil = require(script.Parent.Parent:WaitForChild("Util"):WaitForChild("PlayerUtil"))
 local CharacterService = require(script.Parent:WaitForChild("CharacterService"))
+local GhostService = require(script.Parent:WaitForChild("GhostService"))
 local MansionService = require(script.Parent:WaitForChild("MansionService"))
 local MorphService = require(script.Parent:WaitForChild("MorphService"))
 local NoiseService = require(script.Parent:WaitForChild("NoiseService"))
@@ -97,6 +98,12 @@ local function runRound()
 		ObjectiveService.DropFuse(player, if root then root.Position else nil)
 		if PlayerUtil.Role(player) == Enums.Role.Investigator and player:GetAttribute("Escaped") ~= true then
 			Remotes.Event("Notify"):FireAllClients(player.DisplayName .. " ha sido eliminado", "danger")
+			if player.Parent and root then
+				local deathCf = CFrame.new(root.Position)
+				task.delay(Config.Ghost.SpawnDelay, function()
+					GhostService.MakeGhost(player, deathCf)
+				end)
+			end
 		end
 	end
 
@@ -178,6 +185,7 @@ local function runRound()
 	task.wait(R.ResultsTime)
 
 	-- Limpieza: todos vuelven al lobby con un personaje nuevo.
+	GhostService.ResetAll()
 	for _, player in participants do
 		if player.Parent then
 			MorphService.Reset(player)
@@ -209,6 +217,7 @@ function RoundService.Start()
 				end)
 				if not ok then
 					MansionService.Destroy()
+					GhostService.ResetAll()
 					for _, player in Players:GetPlayers() do
 						MorphService.Reset(player)
 						ToolService.Reset(player)

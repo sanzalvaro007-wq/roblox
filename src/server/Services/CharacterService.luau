@@ -16,14 +16,19 @@ CharacterService.Groups = {
 	Players = "Players",
 	Anomaly = "Anomaly",
 	Disguise = "Disguise",
+	Ghost = "Ghost",
 }
 
 local lobbySpawn = CFrame.new(Config.Lobby.Position + Vector3.new(0, 4, 0))
 
 local function setupCollisionGroups()
 	local g = CharacterService.Groups
-	for _, name in { g.Players, g.Anomaly, g.Disguise } do
+	for _, name in { g.Players, g.Anomaly, g.Disguise, g.Ghost } do
 		PhysicsService:RegisterCollisionGroup(name)
+	end
+	-- Los fantasmas chocan con la mansión pero atraviesan a todo el mundo.
+	for _, other in { g.Players, g.Anomaly, g.Disguise, g.Ghost } do
+		PhysicsService:CollisionGroupSetCollidable(g.Ghost, other, false)
 	end
 	-- La Anomalía atraviesa a los Investigadores (no puede bloquear puertas con el cuerpo)...
 	PhysicsService:CollisionGroupSetCollidable(g.Anomaly, g.Players, false)
@@ -73,6 +78,15 @@ local function buildLobby()
 	lobby.Parent = workspace
 end
 
+local function groupFor(player: Player): string
+	if player:GetAttribute("Ghost") == true then
+		return CharacterService.Groups.Ghost
+	end
+	return if player:GetAttribute("Role") == Enums.Role.Anomaly
+		then CharacterService.Groups.Anomaly
+		else CharacterService.Groups.Players
+end
+
 local function setGroup(character: Model, group: string)
 	for _, d in character:GetDescendants() do
 		if d:IsA("BasePart") and d.CollisionGroup ~= CharacterService.Groups.Disguise then
@@ -92,15 +106,10 @@ end
 
 local function onCharacterAdded(player: Player, character: Model)
 	hideNames(character)
-	local group = if player:GetAttribute("Role") == Enums.Role.Anomaly
-		then CharacterService.Groups.Anomaly
-		else CharacterService.Groups.Players
-	setGroup(character, group)
+	setGroup(character, groupFor(player))
 	character.DescendantAdded:Connect(function(d)
 		if d:IsA("BasePart") and d.CollisionGroup ~= CharacterService.Groups.Disguise then
-			d.CollisionGroup = if player:GetAttribute("Role") == Enums.Role.Anomaly
-				then CharacterService.Groups.Anomaly
-				else CharacterService.Groups.Players
+			d.CollisionGroup = groupFor(player)
 		end
 	end)
 

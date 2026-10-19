@@ -16,6 +16,7 @@ local EVENTS = {
 	"RequestSprint", -- (on: boolean)
 	"RequestSneak", -- (on: boolean)
 	"RequestEmote", -- (kind: string) gritos para quien juega sin voz
+	"GhostAction", -- (kind: "Light" | "Whisper")
 
 	-- Servidor -> Cliente
 	"Notify", -- (text: string, kind: string?)

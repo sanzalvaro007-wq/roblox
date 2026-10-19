@@ -75,6 +75,18 @@ Config.Noise = {
 	EmoteHearRange = 80,
 }
 
+-- Espectador vengativo: ayuda un poco, sin romper el equilibrio.
+Config.Ghost = {
+	SpawnDelay = 3, -- tras la kill cam
+	WalkSpeed = 16,
+	LightCooldown = 20,
+	LightRange = 14,
+	LightDuration = 8,
+	WhisperCooldown = 30,
+	WhisperDuration = 5,
+	WhisperJitter = 3,
+}
+
 Config.Emotes = {
 	Help = "¡AYUDA!",
 	Here = "¡POR AQUÍ!",

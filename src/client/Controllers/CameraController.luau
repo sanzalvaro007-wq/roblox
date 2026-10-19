@@ -42,6 +42,7 @@ local function shouldSpectate(): boolean
 	return state == Enums.RoundState.Playing
 		and player:GetAttribute("Role") == Enums.Role.Investigator
 		and player:GetAttribute("Alive") ~= true
+		and player:GetAttribute("Ghost") ~= true
 end
 
 local function cycle(actionName: string, inputState: Enum.UserInputState, _input: InputObject): Enum.ContextActionResult

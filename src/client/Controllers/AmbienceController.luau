@@ -29,8 +29,14 @@ local function step()
 			continue
 		end
 		local flicker = lamp:GetAttribute("Flicker") == true
+		local ghostUntil = lamp:GetAttribute("GhostUntil")
+		local haunted = typeof(ghostUntil) == "number" and ghostUntil > workspace:GetServerTimeNow()
 		local inBurst = bursting and burstCenter ~= nil and (lamp.Position - burstCenter).Magnitude <= BURST_RADIUS
-		if inBurst then
+		if haunted then
+			-- Un fantasma la ha apagado; parpadea justo antes de volver.
+			local left = (ghostUntil :: number) - workspace:GetServerTimeNow()
+			light.Enabled = left < 1 and math.random() > 0.5
+		elseif inBurst then
 			light.Enabled = math.random() > 0.5
 		elseif flicker then
 			-- Encendida casi siempre, con cortes cortos e irregulares.
