@@ -164,7 +164,9 @@ local function bind()
 	ContextActionService:SetPosition("MM_Attack", UDim2.new(1, -110, 1, -150))
 	ContextActionService:BindAction("MM_QuickMorph", handle, false, table.unpack(QUICK_KEYS))
 	-- La Anomalía no interactúa con fusibles ni puertas: ocultamos los avisos.
-	ProximityPromptService.Enabled = false
+	pcall(function()
+		ProximityPromptService.Enabled = false
+	end)
 end
 
 local function unbind()
@@ -175,7 +177,9 @@ local function unbind()
 	for _, name in { "MM_MorphMenu", "MM_Unmorph", "MM_Attack", "MM_QuickMorph" } do
 		ContextActionService:UnbindAction(name)
 	end
-	ProximityPromptService.Enabled = true
+	pcall(function()
+		ProximityPromptService.Enabled = true
+	end)
 	if menu then
 		setMenu(false)
 	end

@@ -50,13 +50,17 @@ local function refresh()
 		ContextActionService:SetTitle("MM_GhostWhisper", "Susurro")
 		ContextActionService:SetPosition("MM_GhostWhisper", UDim2.new(1, -110, 1, -150))
 		ContextActionService:BindAction("MM_GhostRevive", handle, false, Enum.KeyCode.R)
-		ProximityPromptService.Enabled = false
+		pcall(function()
+			ProximityPromptService.Enabled = false
+		end)
 	elseif not localIsGhost() and bound then
 		bound = false
 		ContextActionService:UnbindAction("MM_GhostLight")
 		ContextActionService:UnbindAction("MM_GhostWhisper")
 		ContextActionService:UnbindAction("MM_GhostRevive")
-		ProximityPromptService.Enabled = true
+		pcall(function()
+			ProximityPromptService.Enabled = true
+		end)
 	end
 end
 
