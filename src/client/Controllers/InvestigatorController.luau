@@ -187,14 +187,17 @@ local function refresh()
 	end
 end
 
--- Linterna local que sigue a la cámara (con inclinación). La del servidor, pegada a la
+-- Linterna local que apunta hacia donde mira la cámara. La del servidor, pegada a la
 -- cabeza, es la que ven los demás; localmente la apagamos para no duplicar.
 -- La pieza va en workspace (no en la cámara): las luces dentro de Camera no siempre iluminan.
+-- El foco sale de delante de la cabeza y no de la cámara: en tercera persona la cámara
+-- está detrás del personaje y su cuerpo tapaba el haz justo al acercarte a algo.
 local AURA_RANGE = 9
+local FILL_REACH = 18
 
-local function makeLocalLight(): Part
+local function lightPart(name: string, parent: Instance): Part
 	local part = Instance.new("Part")
-	part.Name = "LocalFlashlight"
+	part.Name = name
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanQuery = false
@@ -202,6 +205,12 @@ local function makeLocalLight(): Part
 	part.CastShadow = false
 	part.Transparency = 1
 	part.Size = Vector3.new(0.2, 0.2, 0.2)
+	part.Parent = parent
+	return part
+end
+
+local function makeLocalLight(): Part
+	local part = lightPart("LocalFlashlight", workspace)
 	local beam = Instance.new("SpotLight")
 	beam.Name = "Beam"
 	beam.Brightness = 4
@@ -209,15 +218,20 @@ local function makeLocalLight(): Part
 	beam.Shadows = true
 	beam.Face = Enum.NormalId.Front
 	beam.Parent = part
-	-- Relleno cercano: un SpotLight apenas ilumina lo que tiene pegado delante, así que
-	-- ponemos una luz puntual justo delante de la superficie a la que apuntas.
+	-- Luz cercana sin sombras: ilumina lo que tienes pegado delante aunque el cono no llegue.
+	local near = Instance.new("PointLight")
+	near.Name = "Near"
+	near.Range = 8
+	near.Brightness = 0.9
+	near.Color = beam.Color
+	near.Shadows = false
+	near.Parent = part
+	-- Relleno: una luz puntual justo delante de la superficie a la que apuntas.
 	local fill = Instance.new("PointLight")
 	fill.Name = "Fill"
-	fill.Brightness = 0
-	fill.Range = 12
 	fill.Color = beam.Color
 	fill.Shadows = false
-	fill.Parent = part
+	fill.Parent = lightPart("FillAnchor", part)
 	-- Halo tenue para ver tus pies y lo que tienes al lado, incluso sin linterna.
 	local aura = Instance.new("PointLight")
 	aura.Name = "Aura"
@@ -226,7 +240,6 @@ local function makeLocalLight(): Part
 	aura.Color = Color3.fromRGB(200, 200, 220)
 	aura.Shadows = false
 	aura.Parent = part
-	part.Parent = workspace
 	return part
 end
 
@@ -253,53 +266,47 @@ local function updateLocalFlashlight()
 	end
 	local part = localLightPart :: Part
 	local camera = workspace.CurrentCamera
-	-- El foco sale de la propia cámara: si estuviera delante, pegado a una pared quedaría
-	-- dentro de ella y no iluminaría nada.
-	part.CFrame = camera.CFrame
+	local look = camera.CFrame.LookVector
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore: { Instance } = { part }
+	if character then
+		table.insert(ignore, character)
+	end
+	params.FilterDescendantsInstances = ignore
+
+	-- Origen: un poco por delante de la cabeza, sin meterse nunca dentro de una pared.
+	local start = if head and head:IsA("BasePart") then head.Position else camera.CFrame.Position
+	local ahead = 1
+	local wall = workspace:Raycast(start, look * ahead, params)
+	if wall then
+		ahead = math.max(0, (wall.Position - start).Magnitude - 0.3)
+	end
+	local origin = start + look * ahead
+	part.CFrame = CFrame.lookAt(origin, origin + look)
+
 	local beam = part:FindFirstChild("Beam") :: SpotLight?
 	if beam then
 		beam.Enabled = on
 		beam.Angle = angle
 		beam.Range = range
 	end
-	local fill = part:FindFirstChild("Fill", true) :: PointLight?
-	if fill then
-		fill.Enabled = false
-		if on then
-			local params = RaycastParams.new()
-			params.FilterType = Enum.RaycastFilterType.Exclude
-			local ignore: { Instance } = { part }
-			if character then
-				table.insert(ignore, character)
-			end
-			params.FilterDescendantsInstances = ignore
-			local reach = 18
-			local look = camera.CFrame.LookVector
-			local hit = workspace:Raycast(camera.CFrame.Position, look * reach, params)
-			if hit then
-				local dist = (hit.Position - camera.CFrame.Position).Magnitude
-				-- La luz de relleno va como hijo de una pieza aparte, delante del impacto.
-				local anchor = part:FindFirstChild("FillAnchor") :: Part?
-				if not anchor then
-					local a = Instance.new("Part")
-					a.Name = "FillAnchor"
-					a.Anchored = true
-					a.CanCollide = false
-					a.CanQuery = false
-					a.CanTouch = false
-					a.CastShadow = false
-					a.Transparency = 1
-					a.Size = Vector3.new(0.2, 0.2, 0.2)
-					a.Parent = part
-					fill.Parent = a
-					anchor = a
-				end
-				(anchor :: Part).CFrame = CFrame.new(hit.Position - look * math.min(2, dist * 0.5))
-				fill.Enabled = true
-				-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
-				fill.Brightness = 1.6 * (1 - dist / reach) + 0.2
-				fill.Range = 6 + dist * 0.4
-			end
+	local near = part:FindFirstChild("Near") :: PointLight?
+	if near then
+		near.Enabled = on
+	end
+	local anchor = part:FindFirstChild("FillAnchor") :: Part?
+	local fill = if anchor then anchor:FindFirstChild("Fill") :: PointLight? else nil
+	if anchor and fill then
+		local hit = if on then workspace:Raycast(origin, look * FILL_REACH, params) else nil
+		fill.Enabled = hit ~= nil
+		if hit then
+			local dist = (hit.Position - origin).Magnitude
+			anchor.CFrame = CFrame.new(hit.Position + hit.Normal * math.clamp(dist * 0.5, 0.4, 2))
+			-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
+			fill.Brightness = 1.8 * (1 - dist / FILL_REACH) + 0.3
+			fill.Range = 7 + dist * 0.4
 		end
 	end
 end
