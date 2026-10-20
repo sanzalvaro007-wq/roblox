@@ -274,6 +274,119 @@ local function importedParts(id: string): { BasePart }
 	return parts
 end
 
+-- Las 24 rotaciones que dejan los ejes alineados (permutaciones con signo, determinante +1).
+local AXIS_ROTATIONS: { CFrame } = {}
+do
+	local axes = { Vector3.xAxis, -Vector3.xAxis, Vector3.yAxis, -Vector3.yAxis, Vector3.zAxis, -Vector3.zAxis }
+	for _, right in axes do
+		for _, up in axes do
+			if math.abs(right:Dot(up)) < 0.5 then
+				-- fromMatrix calcula el tercer eje como right × up, así que siempre es una rotación.
+				table.insert(AXIS_ROTATIONS, CFrame.fromMatrix(Vector3.zero, right, up))
+			end
+		end
+	end
+end
+
+local function absVector(v: Vector3): Vector3
+	return Vector3.new(math.abs(v.X), math.abs(v.Y), math.abs(v.Z))
+end
+
+export type ImportSample = {
+	size: Vector3, -- caja del modelo importado en ejes del mundo
+	footprint: Vector3, -- caja esperada (PropDef.footprint)
+	up: Vector3?, -- vector que debería apuntar hacia arriba (+Y)
+	front: Vector3?, -- vector que debería apuntar hacia delante (-Z)
+}
+
+-- Elige la rotación que deja los modelos importados de pie y mirando al frente. Según la
+-- versión de Studio, un glTF puede entrar con Z hacia arriba o girado; en vez de suponer
+-- nada, comparamos las proporciones con las del catálogo y usamos piezas de referencia
+-- (la pantalla de la lámpara va arriba, las puertas del armario delante) para el signo.
+function PropCatalog.ChooseImportRotation(samples: { ImportSample }): CFrame
+	local best, bestScore = CFrame.identity, math.huge
+	for _, rotation in AXIS_ROTATIONS do
+		local score = 0
+		for _, sample in samples do
+			local size = absVector(rotation:VectorToWorldSpace(sample.size))
+			local d = {
+				math.log(math.max(size.X, 1e-3) / sample.footprint.X),
+				math.log(math.max(size.Y, 1e-3) / sample.footprint.Y),
+				math.log(math.max(size.Z, 1e-3) / sample.footprint.Z),
+			}
+			local mean = (d[1] + d[2] + d[3]) / 3
+			for _, v in d do
+				score += (v - mean) ^ 2
+			end
+			if sample.up and rotation:VectorToWorldSpace(sample.up).Y <= 0 then
+				score += 10
+			end
+			if sample.front and rotation:VectorToWorldSpace(sample.front).Z >= 0 then
+				score += 10
+			end
+		end
+		-- A igualdad, preferimos no girar.
+		if score < bestScore - 1e-6 then
+			best, bestScore = rotation, score
+		end
+	end
+	return best
+end
+
+local function finishCenter(parts: { BasePart }, finish: string): Vector3?
+	local sum, count = Vector3.zero, 0
+	for _, p in parts do
+		if string.match(p.Name, "_(%w+)$") == finish then
+			sum += p.Position
+			count += 1
+		end
+	end
+	return if count > 0 then sum / count else nil
+end
+
+local function boundsOf(parts: { BasePart }): (Vector3, Vector3)
+	local lo = Vector3.one * math.huge
+	local hi = -lo
+	for _, p in parts do
+		local half = absVector(p.CFrame:VectorToWorldSpace(Vector3.new(p.Size.X, 0, 0)))
+			+ absVector(p.CFrame:VectorToWorldSpace(Vector3.new(0, p.Size.Y, 0)))
+			+ absVector(p.CFrame:VectorToWorldSpace(Vector3.new(0, 0, p.Size.Z)))
+		lo = lo:Min(p.Position - half / 2)
+		hi = hi:Max(p.Position + half / 2)
+	end
+	return (lo + hi) / 2, hi - lo
+end
+
+local importRotation: CFrame? = nil
+local function getImportRotation(): CFrame
+	if importRotation then
+		return importRotation
+	end
+	local samples: { ImportSample } = {}
+	for _, def in list do
+		local parts = importedParts(def.id)
+		if #parts > 0 then
+			local _, size = boundsOf(parts)
+			local sample: ImportSample = { size = size, footprint = def.footprint }
+			if def.id == "FloorLamp" then
+				local shade, base = finishCenter(parts, "Shade"), finishCenter(parts, "Brass")
+				if shade and base then
+					sample.up = shade - base
+				end
+			elseif def.id == "Wardrobe" then
+				local doors, body = finishCenter(parts, "Wood"), finishCenter(parts, "DarkWood")
+				if doors and body then
+					sample.front = doors - body
+				end
+			end
+			table.insert(samples, sample)
+		end
+	end
+	local rotation = PropCatalog.ChooseImportRotation(samples)
+	importRotation = rotation
+	return rotation
+end
+
 local function prototype(def: PropDef): Model?
 	local cached = prototypes[def.id]
 	if cached ~= nil then
@@ -284,6 +397,7 @@ local function prototype(def: PropDef): Model?
 		prototypes[def.id] = false
 		return nil
 	end
+	local rotation = getImportRotation()
 	local model = Instance.new("Model")
 	model.Name = "Prop"
 	local biggest: BasePart? = nil
@@ -303,19 +417,26 @@ local function prototype(def: PropDef): Model?
 			p.Color = finish.color
 			p.Material = finish.material
 		end
+		p.CFrame = rotation * p.CFrame
 		p.Parent = model
 		if not biggest or p.Size.Magnitude > (biggest :: BasePart).Size.Magnitude then
 			biggest = p
 		end
 	end
+	-- Caja en ejes del mundo (no en los de la primera malla, que puede venir girada).
+	local parts: { BasePart } = {}
+	for _, d in model:GetChildren() do
+		if d:IsA("BasePart") then
+			table.insert(parts, d)
+		end
+	end
+	local center, size = boundsOf(parts)
+	model.PrimaryPart = biggest
+	model.WorldPivot = CFrame.new(center - Vector3.new(0, size.Y / 2, 0))
 	-- Misma altura que el placeholder, sea cual sea la escala con la que se importó.
-	local _, size = model:GetBoundingBox()
 	if size.Y > 0 then
 		model:ScaleTo(def.footprint.Y / size.Y)
 	end
-	local box, scaled = model:GetBoundingBox()
-	model.PrimaryPart = biggest
-	model.WorldPivot = CFrame.new(box.Position - Vector3.new(0, scaled.Y / 2, 0))
 	model:PivotTo(CFrame.new())
 	prototypes[def.id] = model
 	return model

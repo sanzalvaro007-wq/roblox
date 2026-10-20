@@ -81,6 +81,7 @@ Para usarlos en el juego:
 luau tests/MansionLayout.spec.luau                         # 2000 semillas del generador
 luau tests/ShopCatalog.spec.luau                           # probabilidades del gacha
 rojo build -o build/MimicManor.rbxlx && lune run tests/run_mansion.luau build/MimicManor.rbxlx   # 200 mansiones construidas de verdad
+lune run tests/ImportRotation.spec.luau build/MimicManor.rbxlx   # orientación de los modelos importados
 ```
 
 ## Estructura
