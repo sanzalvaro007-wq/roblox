@@ -125,6 +125,8 @@ Config.Objectives = {
 	FuseInsertHold = 1.5,
 	EscapeHold = 2,
 	BatteryPickups = 5,
+	CrateOpenHold = 1.2, -- los fusibles están dentro de cajas que hay que abrir
+	DecoyCrates = 4, -- cajas extra: vacías o con una pila
 	LampRadiusPowerOff = 10,
 	LampRadiusPowerOn = 20,
 }

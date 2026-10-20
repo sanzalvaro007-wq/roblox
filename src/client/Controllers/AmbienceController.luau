@@ -3,6 +3,7 @@
 -- lámparas parpadean con el atributo "Flicker"; la cordura baja puede provocar ráfagas.
 
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local AmbienceController = {}
@@ -46,6 +47,22 @@ local function step()
 			light.Enabled = true
 		end
 		lamp.Material = if light.Enabled then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		for _, flame in lamp:GetChildren() do
+			if flame:IsA("BasePart") and flame.Name == "Flame" then
+				flame.Transparency = if light.Enabled then 0 else 1
+			end
+		end
+	end
+
+	-- Los ojos de los cuadros se encienden cuando tu cordura baja.
+	local sanity = Players.LocalPlayer:GetAttribute("Sanity")
+	local fear = if typeof(sanity) == "number" then math.clamp((60 - sanity) / 45, 0, 1) else 0
+	local pulse = 0.75 + 0.25 * math.sin(now * 2)
+	local eyeColor = Color3.fromRGB(70, 10, 10):Lerp(Color3.fromRGB(255, 40, 30), fear * pulse)
+	for _, e in CollectionService:GetTagged("PaintingEye") do
+		if e:IsA("Frame") then
+			e.BackgroundColor3 = eyeColor
+		end
 	end
 end
 

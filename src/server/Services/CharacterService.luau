@@ -159,15 +159,60 @@ function CharacterService.MoveToLobby(player: Player)
 	player.CameraMode = Enum.CameraMode.Classic
 end
 
--- Silueta oscura con ojos rojos. Placeholder hasta tener el modelo de Blender.
+local ANOMALY_COLOR = Color3.fromRGB(8, 7, 9)
+
+-- Cuerpo de "hombre delgado": mucho más alto y estrecho que un Investigador, con brazos
+-- y piernas largos. Solo en R15 (R6 no se puede escalar); ApplyDescription espera.
+local function slenderBody(character: Model)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.RigType ~= Enum.HumanoidRigType.R15 then
+		return
+	end
+	local ok, desc = pcall(function()
+		return humanoid:GetAppliedDescription()
+	end)
+	if not ok or not desc then
+		return
+	end
+	desc.HeightScale = 1.45
+	desc.WidthScale = 0.72
+	desc.DepthScale = 0.75
+	desc.HeadScale = 0.85
+	desc.ProportionScale = 1
+	desc.BodyTypeScale = 0.35
+	for _, prop in { "HeadColor", "TorsoColor", "LeftArmColor", "RightArmColor", "LeftLegColor", "RightLegColor" } do
+		(desc :: any)[prop] = ANOMALY_COLOR
+	end
+	for _, prop in { "HatAccessory", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShouldersAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory" } do
+		(desc :: any)[prop] = ""
+	end
+	desc.Shirt = 0
+	desc.Pants = 0
+	desc.GraphicTShirt = 0
+	desc.Face = 0
+	pcall(function()
+		desc:SetAccessories({}, true)
+	end)
+	pcall(function()
+		humanoid:ApplyDescriptionAsync(desc)
+	end)
+end
+
+-- Silueta negra, alta y delgada con dos ojos rojos tenues.
 function CharacterService.ApplyAnomalyLook(character: Model)
+	slenderBody(character)
 	local function strip(d: Instance)
 		if d:IsA("Accessory") or d:IsA("Clothing") or d:IsA("ShirtGraphic") then
 			d:Destroy()
 		elseif d:IsA("Decal") and d.Name == "face" then
 			d:Destroy()
-		elseif d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.CollisionGroup ~= CharacterService.Groups.Disguise then
-			d.Color = Color3.fromRGB(12, 10, 12)
+		elseif
+			d:IsA("BasePart")
+			and d.Name ~= "HumanoidRootPart"
+			and d.Name ~= "Eye"
+			and d.CollisionGroup ~= CharacterService.Groups.Disguise
+		then
+			d.Color = ANOMALY_COLOR
 			d.Material = Enum.Material.SmoothPlastic
 		end
 	end

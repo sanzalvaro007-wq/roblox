@@ -68,9 +68,9 @@ end
 -- Variantes de linterna (la de serie es "Default").
 ShopCatalog.Flashlights = {
 	-- Roblox limita el alcance de las luces a 60 studs.
-	Default = { angle = 60, range = 50, drain = 1 },
-	Flashlight_Lantern = { angle = 85, range = 38, drain = 1 },
-	Flashlight_Tactical = { angle = 40, range = 60, drain = 1.15 },
+	Default = { angle = 50, range = 32, drain = 1 },
+	Flashlight_Lantern = { angle = 75, range = 24, drain = 1 },
+	Flashlight_Tactical = { angle = 34, range = 44, drain = 1.15 },
 }
 
 -- Gacha "Cofre maldito": formas cosméticas de la Anomalía con kill cam propia.

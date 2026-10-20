@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local PropCatalog = require(Shared:WaitForChild("PropCatalog"))
 local MansionLayout = require(script.Parent:WaitForChild("MansionLayout"))
+local Decor = require(script.Parent:WaitForChild("Decor"))
 
 type Layout = MansionLayout.Layout
 type Cell = MansionLayout.Cell
@@ -223,19 +224,11 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		end
 	end
 
-	-- Lámparas: una por celda; algunas parpadean (el cliente hace el parpadeo).
+	-- Lámparas: una araña colgada del techo por celda; algunas parpadean (lo hace el cliente).
 	local lamps: { BasePart } = {}
 	for _, room in layout.rooms do
 		for _, cell in room.cells do
-			local lamp = newPart(
-				lampsFolder,
-				"Lamp",
-				Vector3.new(1.6, 0.6, 1.6),
-				CFrame.new(cellCenter(cell) + Vector3.new(0, H - 0.4, 0)),
-				Color3.fromRGB(255, 200, 140),
-				Enum.Material.Neon
-			)
-			lamp.CanCollide = false
+			local lamp = Decor.Chandelier(lampsFolder, cellCenter(cell) + Vector3.new(0, H, 0))
 			local light = Instance.new("PointLight")
 			light.Color = Color3.fromRGB(255, 190, 130)
 			light.Range = 24
@@ -301,6 +294,27 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		reserve(fuseRoom.cells[1], pos, 4)
 	end
 
+	-- Cuadros en las paredes lisas (sin puerta), a media altura y lejos de la caja de fusibles.
+	local decor = Instance.new("Folder")
+	decor.Name = "Decor"
+	decor.Parent = model
+	local paintingKind = rng.int(1, Decor.PaintingCount)
+	for _, room in layout.rooms do
+		for _, cell in room.cells do
+			for _, d in DIRS do
+				local nx, ny = cell.x + d.x, cell.y + d.y
+				if roomAt(nx, ny) ~= room.id and not doorEdges[edgeKey(cell, { x = nx, y = ny })] and rng.float() < 0.5 then
+					local dv = dirVector(d)
+					local pos = cellCenter(cell) + dv * (CS / 2 - T / 2 - 0.2) + Vector3.new(0, 7.6, 0)
+					if (pos - (fuseBoxCf :: CFrame).Position).Magnitude > 8 then
+						Decor.Painting(decor, CFrame.lookAt(pos, pos - dv), paintingKind)
+						paintingKind += 1
+					end
+				end
+			end
+		end
+	end
+
 	-- Puntos para fusibles: centro de cada sala que no sea el vestíbulo.
 	local fuseSpawns: { Vector3 } = {}
 	for _, room in layout.rooms do
@@ -308,7 +322,7 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 			local cell = room.cells[rng.int(1, #room.cells)]
 			local pos = cellCenter(cell) + Vector3.new(rng.int(-3, 3), 0.5, rng.int(-3, 3))
 			table.insert(fuseSpawns, pos)
-			reserve(cell, pos, 3)
+			reserve(cell, pos, 5.5) -- sitio para una caja y otra al lado
 		end
 	end
 

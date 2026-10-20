@@ -12,7 +12,8 @@ Juego de terror asimétrico y escondite para Roblox: una Anomalía que se transf
 - **Anomalía**: 10 formas (armario, silla, mesa, reloj de pie, cómoda, baúl, lámpara, busto, jarrón, estantería) idénticas a los muebles de la mansión. Atacar transformada ≥2 s es una emboscada con muerte instantánea y kill cam.
 - **Investigadores**: linterna con batería (y pilas por la mansión), cámara con 6 fotos (el flash revela y aturde a la Anomalía), detector EMF de 5 niveles y sprint con aguante.
 - **Cordura**: baja con la oscuridad, la soledad y la Anomalía cerca, y sube en grupo y con luz. Por debajo de 60/35/15 aparecen pasos falsos, figuras, muebles que se acercan y un EMF que miente, **solo en el cliente de ese jugador**.
-- **Objetivo**: recoger fusibles (3 + 1 por cada 3 Investigadores), colocarlos en la caja, restaurar la energía y escapar por la puerta principal.
+- **Objetivo**: abrir cajas de madera para encontrar los fusibles (3 + 1 por cada 3 Investigadores; hay cajas vacías o con pilas), colocarlos en la caja de fusibles, restaurar la energía y escapar por la puerta principal.
+- **Ambiente**: arañas colgadas del techo y cuadros inquietantes (13+, sin gore) cuyos ojos se encienden cuando tu cordura baja. La Anomalía es una figura negra, alta y delgada.
 
 ### Fase 2: ruido y voz
 - **Voz posicional** opcional con la Audio API de Roblox (13+, verificación de edad de Roblox). El volumen de tu micro se convierte en ruido.

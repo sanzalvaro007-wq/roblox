@@ -213,7 +213,7 @@ local function makeLocalLight(): Part
 	local part = lightPart("LocalFlashlight", workspace)
 	local beam = Instance.new("SpotLight")
 	beam.Name = "Beam"
-	beam.Brightness = 4
+	beam.Brightness = 2.2
 	beam.Color = Color3.fromRGB(255, 240, 210)
 	beam.Shadows = true
 	beam.Face = Enum.NormalId.Front
@@ -221,8 +221,8 @@ local function makeLocalLight(): Part
 	-- Luz cercana sin sombras: ilumina lo que tienes pegado delante aunque el cono no llegue.
 	local near = Instance.new("PointLight")
 	near.Name = "Near"
-	near.Range = 8
-	near.Brightness = 0.9
+	near.Range = 6
+	near.Brightness = 0.4
 	near.Color = beam.Color
 	near.Shadows = false
 	near.Parent = part
@@ -251,7 +251,7 @@ local function updateLocalFlashlight()
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
 	local angle, range = 60, 50
 	if serverLight and serverLight:IsA("SpotLight") then
-		serverLight.Brightness = if on then 0 else 3
+		serverLight.Brightness = if on then 0 else 1.8
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
 	end
 	if not inPlay then
@@ -305,8 +305,8 @@ local function updateLocalFlashlight()
 			local dist = (hit.Position - origin).Magnitude
 			anchor.CFrame = CFrame.new(hit.Position + hit.Normal * math.clamp(dist * 0.5, 0.4, 2))
 			-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
-			fill.Brightness = 1.8 * (1 - dist / FILL_REACH) + 0.3
-			fill.Range = 7 + dist * 0.4
+			fill.Brightness = 0.9 * (1 - dist / FILL_REACH) + 0.15
+			fill.Range = 5 + dist * 0.3
 		end
 	end
 end

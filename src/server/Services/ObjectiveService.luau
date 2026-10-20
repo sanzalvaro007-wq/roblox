@@ -5,6 +5,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -87,9 +88,9 @@ local function setCarrying(player: Player, carrying: boolean)
 	end
 end
 
-local function spawnFuse(position: Vector3)
+local function spawnFuse(position: Vector3): Part?
 	if not folder then
-		return
+		return nil
 	end
 	local fuse = Instance.new("Part")
 	fuse.Name = "Fuse"
@@ -122,11 +123,12 @@ local function spawnFuse(position: Vector3)
 		Remotes.Event("Notify"):FireClient(player, "Fusible recogido. Llévalo a la caja de fusibles", "info")
 	end)
 	fuse.Parent = folder
+	return fuse
 end
 
-local function spawnBattery(position: Vector3)
+local function spawnBattery(position: Vector3): Part?
 	if not folder then
-		return
+		return nil
 	end
 	local battery = Instance.new("Part")
 	battery.Name = "Battery"
@@ -146,6 +148,72 @@ local function spawnBattery(position: Vector3)
 		Remotes.Event("Notify"):FireClient(player, "+" .. Config.Investigator.BatteryPickupAmount .. "% de batería", "info")
 	end)
 	battery.Parent = folder
+	return battery
+end
+
+-- Caja de madera cerrada. Al abrirla (mantener E) se levanta la tapa y aparece lo que
+-- guarda: un fusible, una pila o nada. Lo de dentro no existe hasta que se abre, así que
+-- no se puede ver ni coger a través de la tapa.
+local CRATE_SIZE = Vector3.new(2.8, 1.6, 2)
+local CRATE_WOOD = Color3.fromRGB(96, 70, 46)
+local CRATE_DARK = Color3.fromRGB(60, 42, 30)
+
+local function cratePart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = material
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function spawnCrate(position: Vector3, content: "Fuse" | "Battery" | "Empty")
+	if not folder then
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = "Crate"
+	local yaw = math.random(0, 3) * math.pi / 2 + math.rad(math.random(-12, 12))
+	local base = CFrame.new(position * Vector3.new(1, 0, 1) + Vector3.new(0, position.Y - 0.5, 0)) * CFrame.Angles(0, yaw, 0)
+	local s = CRATE_SIZE
+	local body = cratePart(model, "Body", s, base * CFrame.new(0, s.Y / 2, 0), CRATE_WOOD, Enum.Material.WoodPlanks)
+	for _, x in { -s.X / 2 + 0.25, s.X / 2 - 0.25 } do
+		cratePart(model, "Strap", Vector3.new(0.2, s.Y + 0.02, s.Z + 0.04), base * CFrame.new(x, s.Y / 2, 0), CRATE_DARK, Enum.Material.Metal)
+	end
+	local lidSize = Vector3.new(s.X + 0.1, 0.3, s.Z + 0.1)
+	local lidClosed = base * CFrame.new(0, s.Y + lidSize.Y / 2, 0)
+	local lid = cratePart(model, "Lid", lidSize, lidClosed, CRATE_DARK, Enum.Material.WoodPlanks)
+	local latch = cratePart(model, "Latch", Vector3.new(0.35, 0.45, 0.1), base * CFrame.new(0, s.Y, -s.Z / 2 - 0.05), Color3.fromRGB(150, 120, 70), Enum.Material.Metal)
+	latch.CanCollide = false
+	model.Parent = folder
+
+	local prompt = makePrompt(body, "Abrir", "Caja", O.CrateOpenHold)
+	prompt.Triggered:Connect(function(player)
+		if not roundPlaying() or not PlayerUtil.IsInvestigator(player) or prompt.Parent == nil then
+			return
+		end
+		prompt:Destroy()
+		-- La tapa gira sobre la bisagra trasera.
+		local hinge = base * CFrame.new(0, s.Y, s.Z / 2)
+		local open = hinge * CFrame.Angles(math.rad(105), 0, 0) * hinge:Inverse() * lidClosed
+		lid.CanCollide = false
+		latch:Destroy()
+		TweenService:Create(lid, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = open }):Play()
+		-- Asoma por encima del borde para que se vea y el aviso tenga línea de visión.
+		local inside = (base * CFrame.new(0, s.Y + 0.1, 0)).Position
+		if content == "Fuse" then
+			spawnFuse(inside - Vector3.new(0, 0.6, 0))
+		elseif content == "Battery" then
+			spawnBattery(inside - Vector3.new(0, 0.5, 0))
+		else
+			Remotes.Event("Notify"):FireClient(player, "La caja está vacía", "warn")
+		end
+	end)
 end
 
 local function setPower(on: boolean)
@@ -276,6 +344,13 @@ function ObjectiveService.DropFuse(player: Player, position: Vector3?)
 	end
 end
 
+-- Desplazamiento para poner una segunda caja junto a un sitio ya usado, dentro del hueco
+-- que el generador deja libre alrededor de cada punto de fusible.
+local function besideSpot(): Vector3
+	local a = math.random() * math.pi * 2
+	return Vector3.new(math.cos(a) * 3.3, 0, math.sin(a) * 3.3)
+end
+
 function ObjectiveService.FusesRequiredFor(investigators: number): number
 	return math.min(O.FusesMax, O.FusesBase + investigators // O.FusesPerInvestigators)
 end
@@ -306,8 +381,15 @@ function ObjectiveService.Setup(mansion: Mansion, investigators: number)
 	for i = 1, required + 1 do
 		local base = spots[((i - 1) % math.max(1, #spots)) + 1]
 		if base then
-			local extra = if i > #spots then Vector3.new(math.random(-4, 4), 0, math.random(-4, 4)) else Vector3.zero
-			spawnFuse(base + extra)
+			spawnCrate(base + if i > #spots then besideSpot() else Vector3.zero, "Fuse")
+		end
+	end
+	-- Cajas señuelo en los sitios de fusible que sobran, o junto a los usados.
+	for i = 1, O.DecoyCrates do
+		local base = spots[required + 1 + i] or spots[math.random(1, math.max(1, #spots))]
+		if base then
+			local extra = if spots[required + 1 + i] then Vector3.zero else besideSpot()
+			spawnCrate(base + extra, if math.random() < 0.5 then "Battery" else "Empty")
 		end
 	end
 

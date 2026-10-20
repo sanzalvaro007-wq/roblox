@@ -45,7 +45,7 @@ local function makeRequire()
 		if cache[module] ~= nil then return cache[module] end
 		local env = setmetatable({
 			game = game, workspace = workspace, script = module, require = nil,
-			Instance = Instance, Vector3 = Vector3, CFrame = CFrame, Color3 = roblox.Color3, Enum = roblox.Enum,
+			Instance = Instance, Vector3 = Vector3, CFrame = CFrame, Color3 = roblox.Color3, Enum = roblox.Enum, ColorSequence = roblox.ColorSequence, UDim = roblox.UDim, UDim2 = roblox.UDim2, Vector2 = roblox.Vector2,
 			UDim2 = roblox.UDim2, UDim = roblox.UDim, Random = RandomShim, task = task,
 		}, { __index = _G })
 		env.require = req
