@@ -31,7 +31,6 @@ local morphedAt = 0
 local visionPart: Part? = nil
 local lastAttackAt = -math.huge
 local crosshair: TextLabel
-local aiming = false -- cámara al hombro activa (para restaurarla al salir)
 
 local function active(): boolean
 	local state = ReplicatedStorage:GetAttribute("RoundState")
@@ -319,36 +318,14 @@ local function updateVision()
 	end
 end
 
--- Cámara al hombro: el ratón gira la cámara sin mantener el botón derecho y el cuerpo
--- (o el mueble) mira siempre hacia donde apuntas, igual que el bloqueo de mayúsculas.
--- Se ejecuta después de la cámara de Roblox, que si no vuelve a soltar el ratón.
+-- La Anomalía va en primera persona, igual que los Investigadores (lo fija el servidor).
+-- Con el menú de formas abierto soltamos el ratón para poder pulsar los botones; se
+-- ejecuta después de la cámara de Roblox, que si no lo vuelve a bloquear.
 local function updateAim()
-	local character = player.Character
-	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	local want = active() and humanoid ~= nil and root ~= nil and humanoid.Health > 0
-	crosshair.Visible = want and not menu.Visible
-	if not want then
-		if aiming then
-			aiming = false
-			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			if humanoid then
-				humanoid.AutoRotate = true
-				humanoid.CameraOffset = Vector3.zero
-			end
-		end
-		return
-	end
-	aiming = true
-	local h = humanoid :: Humanoid
-	local r = root :: BasePart
-	-- Con el menú de formas abierto el ratón queda libre para pulsar los botones.
-	UserInputService.MouseBehavior = if menu.Visible then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
-	h.AutoRotate = false
-	h.CameraOffset = Vector3.new(1.75, 0.5, 0)
-	local look = workspace.CurrentCamera.CFrame.LookVector * Vector3.new(1, 0, 1)
-	if look.Magnitude > 0.01 then
-		r.CFrame = CFrame.lookAt(r.Position, r.Position + look.Unit)
+	local on = active()
+	crosshair.Visible = on and not menu.Visible
+	if on and menu.Visible then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	end
 end
 

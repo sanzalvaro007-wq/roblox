@@ -78,8 +78,7 @@ local function spawnAnomaly(player: Player, cf: CFrame)
 	player:SetAttribute("Alive", true)
 	player:SetAttribute("Escaped", false)
 	local character = CharacterService.SpawnAt(player, cf)
-	player.CameraMode = Enum.CameraMode.Classic
-	player.CameraMaxZoomDistance = 14
+	player.CameraMode = Enum.CameraMode.LockFirstPerson
 	if character then
 		CharacterService.ApplyAnomalyLook(character)
 	end

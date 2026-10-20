@@ -36,7 +36,7 @@ local TEXTS: { [string]: string } = {
 		"",
 		"Objetivo: que nadie escape antes de que acabe el tiempo.",
 		"· Q: menú de formas; conviértete en un mueble y quédate quieta entre los de verdad",
-		"· El ratón gira la cámara; atacas hacia la cruz roja (alcance corto, acércate)",
+		"· Atacas hacia la cruz roja del centro (alcance corto, acércate)",
 		"· Clic: atacar (desde que empieza la partida). Si llevas 2 s transformada, la emboscada mata de un golpe",
 		"· E: volver a tu forma",
 		"",
