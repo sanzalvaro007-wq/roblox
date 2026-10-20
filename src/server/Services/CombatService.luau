@@ -33,12 +33,13 @@ local function hasLineOfSight(from: Vector3, to: Vector3, ignore: { Instance }, 
 	return result == nil or result.Instance:IsDescendantOf(target)
 end
 
-local function findTarget(attacker: Player): Player?
+local function findTarget(attacker: Player, aim: Vector3?): Player?
 	local root = PlayerUtil.Root(attacker)
 	if not root or not attacker.Character then
 		return nil
 	end
-	local forward = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	-- Apunta hacia donde mira su cámara (si la manda) y si no, hacia donde mira el cuerpo.
+	local forward = (aim or root.CFrame.LookVector) * Vector3.new(1, 0, 1)
 	forward = if forward.Magnitude > 0 then forward.Unit else Vector3.new(0, 0, -1)
 	-- Transformada, el mueble puede ser ancho: margen extra de alcance y de ángulo.
 	local morphed = MorphService.IsMorphed(attacker)
@@ -81,7 +82,7 @@ function CombatService.Kill(victim: Player, killer: Player?, propId: string?)
 	end
 end
 
-local function onAttack(player: Player)
+local function onAttack(player: Player, aim: Vector3?)
 	if ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
 		return
 	end
@@ -96,7 +97,7 @@ local function onAttack(player: Player)
 
 	local propId = MorphService.PropId(player)
 	local ambush = propId ~= nil and MorphService.MorphedFor(player) >= A.AmbushMinMorphTime
-	local victim = findTarget(player)
+	local victim = findTarget(player, aim)
 	-- Atacar siempre revela: el mueble "cobra vida".
 	if propId then
 		MorphService.Unmorph(player)
@@ -119,10 +120,15 @@ local function onAttack(player: Player)
 end
 
 function CombatService.Init()
-	Remotes.Event("RequestAttack").OnServerEvent:Connect(function(player)
-		if Guard.RateLimit(player, "Attack", 0.2) then
-			onAttack(player)
+	Remotes.Event("RequestAttack").OnServerEvent:Connect(function(player, aim)
+		if not Guard.RateLimit(player, "Attack", 0.2) then
+			return
 		end
+		local dir: Vector3? = nil
+		if Guard.IsFiniteVector(aim) and (aim :: Vector3).Magnitude > 0.01 then
+			dir = (aim :: Vector3).Unit
+		end
+		onAttack(player, dir)
 	end)
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastAttack[player] = nil

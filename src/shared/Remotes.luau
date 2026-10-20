@@ -9,7 +9,7 @@ local EVENTS = {
 	-- Cliente -> Servidor
 	"RequestMorph", -- (propId: string)
 	"RequestUnmorph", -- ()
-	"RequestAttack", -- ()
+	"RequestAttack", -- (aim: Vector3?) dirección de la cámara
 	"ToggleFlashlight", -- (on: boolean)
 	"EquipTool", -- (tool: string)
 	"TakePhoto", -- (lookVector: Vector3)

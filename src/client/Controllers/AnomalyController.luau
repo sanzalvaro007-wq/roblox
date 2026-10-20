@@ -8,6 +8,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -28,6 +29,9 @@ local hint: TextLabel
 local currentProp: string? = nil
 local morphedAt = 0
 local visionPart: Part? = nil
+local lastAttackAt = -math.huge
+local crosshair: TextLabel
+local aiming = false -- cámara al hombro activa (para restaurarla al salir)
 
 local function active(): boolean
 	local state = ReplicatedStorage:GetAttribute("RoundState")
@@ -101,6 +105,18 @@ local function buildUi()
 		end)
 	end
 
+	crosshair = UIController.Label({
+		Name = "AnomalyCrosshair",
+		Text = "+",
+		TextSize = 26,
+		TextColor3 = Color3.fromRGB(255, 90, 80),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(30, 30),
+		Visible = false,
+		Parent = gui,
+	})
+
 	hint = UIController.Label({
 		Name = "AnomalyHint",
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -122,7 +138,30 @@ local function handle(actionName: string, inputState: Enum.UserInputState, input
 	elseif actionName == "MM_Unmorph" then
 		Remotes.Event("RequestUnmorph"):FireServer()
 	elseif actionName == "MM_Attack" then
-		Remotes.Event("RequestAttack"):FireServer()
+		if menu.Visible then
+			return Enum.ContextActionResult.Pass
+		end
+		if ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
+			UIController.Toast("Aún no puedes atacar: espera a que empiece la partida", "warn")
+			return Enum.ContextActionResult.Sink
+		end
+		local now = os.clock()
+		if now - lastAttackAt < Config.Anomaly.AttackCooldown then
+			return Enum.ContextActionResult.Sink
+		end
+		lastAttackAt = now
+		-- Zarpazo visible aunque falles; el servidor decide si alcanza a alguien.
+		UIController.Flash(Color3.fromRGB(120, 0, 0), 0.25, 0.75)
+		local sound = Instance.new("Sound")
+		sound.SoundId = Config.Sounds.Scream
+		sound.Volume = 0.4
+		sound.PlaybackSpeed = 1.6
+		sound.Parent = workspace.CurrentCamera
+		sound:Play()
+		task.delay(2, function()
+			sound:Destroy()
+		end)
+		Remotes.Event("RequestAttack"):FireServer(workspace.CurrentCamera.CFrame.LookVector)
 	elseif actionName == "MM_QuickMorph" and menu.Visible then
 		local index = input.KeyCode.Value - Enum.KeyCode.One.Value + 1
 		local def = PropCatalog.List[index]
@@ -280,6 +319,39 @@ local function updateVision()
 	end
 end
 
+-- Cámara al hombro: el ratón gira la cámara sin mantener el botón derecho y el cuerpo
+-- (o el mueble) mira siempre hacia donde apuntas, igual que el bloqueo de mayúsculas.
+-- Se ejecuta después de la cámara de Roblox, que si no vuelve a soltar el ratón.
+local function updateAim()
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+	local want = active() and humanoid ~= nil and root ~= nil and humanoid.Health > 0
+	crosshair.Visible = want and not menu.Visible
+	if not want then
+		if aiming then
+			aiming = false
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			if humanoid then
+				humanoid.AutoRotate = true
+				humanoid.CameraOffset = Vector3.zero
+			end
+		end
+		return
+	end
+	aiming = true
+	local h = humanoid :: Humanoid
+	local r = root :: BasePart
+	-- Con el menú de formas abierto el ratón queda libre para pulsar los botones.
+	UserInputService.MouseBehavior = if menu.Visible then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
+	h.AutoRotate = false
+	h.CameraOffset = Vector3.new(1.75, 0.5, 0)
+	local look = workspace.CurrentCamera.CFrame.LookVector * Vector3.new(1, 0, 1)
+	if look.Magnitude > 0.01 then
+		r.CFrame = CFrame.lookAt(r.Position, r.Position + look.Unit)
+	end
+end
+
 local function updateHint()
 	updateVision()
 	local show = active()
@@ -300,6 +372,10 @@ local function updateHint()
 	else
 		hint.Text = "Q: transformarte · Clic: atacar"
 	end
+	local wait = Config.Anomaly.AttackCooldown - (os.clock() - lastAttackAt)
+	if wait > 0 then
+		hint.Text ..= string.format(" · ataque en %.1f s", wait)
+	end
 end
 
 function AnomalyController.Start()
@@ -318,6 +394,7 @@ function AnomalyController.Start()
 	Remotes.Event("NoisePing").OnClientEvent:Connect(showNoise)
 
 	RunService.RenderStepped:Connect(updateHint)
+	RunService:BindToRenderStep("MM_AnomalyAim", Enum.RenderPriority.Camera.Value + 1, updateAim)
 end
 
 return AnomalyController
