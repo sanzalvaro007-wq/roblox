@@ -18,7 +18,7 @@ local TEXTS: { [string]: string } = {
 		"ERES INVESTIGADOR",
 		"",
 		"Objetivo: escapar de la mansión. Si escapa al menos uno, ganáis.",
-		"1. Busca los fusibles amarillos brillantes y recógelos con E.",
+		"1. Busca los fusibles (cilindros amarillos pequeños; usa la linterna) y recógelos con E.",
 		"2. Llévalos a la caja de fusibles (te sale un marcador) y mantén E.",
 		"3. Con todos puestos vuelve la luz: corre a la Salida (marcador verde) y mantén E.",
 		"",

@@ -209,6 +209,15 @@ local function makeLocalLight(): Part
 	beam.Shadows = true
 	beam.Face = Enum.NormalId.Front
 	beam.Parent = part
+	-- Relleno cercano: un SpotLight apenas ilumina lo que tiene pegado delante, así que
+	-- ponemos una luz puntual justo delante de la superficie a la que apuntas.
+	local fill = Instance.new("PointLight")
+	fill.Name = "Fill"
+	fill.Brightness = 0
+	fill.Range = 12
+	fill.Color = beam.Color
+	fill.Shadows = false
+	fill.Parent = part
 	-- Halo tenue para ver tus pies y lo que tienes al lado, incluso sin linterna.
 	local aura = Instance.new("PointLight")
 	aura.Name = "Aura"
@@ -243,12 +252,55 @@ local function updateLocalFlashlight()
 		localLightPart = makeLocalLight()
 	end
 	local part = localLightPart :: Part
-	part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0.4, -0.4, -0.5)
+	local camera = workspace.CurrentCamera
+	-- El foco sale de la propia cámara: si estuviera delante, pegado a una pared quedaría
+	-- dentro de ella y no iluminaría nada.
+	part.CFrame = camera.CFrame
 	local beam = part:FindFirstChild("Beam") :: SpotLight?
 	if beam then
 		beam.Enabled = on
 		beam.Angle = angle
 		beam.Range = range
+	end
+	local fill = part:FindFirstChild("Fill", true) :: PointLight?
+	if fill then
+		fill.Enabled = false
+		if on then
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			local ignore: { Instance } = { part }
+			if character then
+				table.insert(ignore, character)
+			end
+			params.FilterDescendantsInstances = ignore
+			local reach = 18
+			local look = camera.CFrame.LookVector
+			local hit = workspace:Raycast(camera.CFrame.Position, look * reach, params)
+			if hit then
+				local dist = (hit.Position - camera.CFrame.Position).Magnitude
+				-- La luz de relleno va como hijo de una pieza aparte, delante del impacto.
+				local anchor = part:FindFirstChild("FillAnchor") :: Part?
+				if not anchor then
+					local a = Instance.new("Part")
+					a.Name = "FillAnchor"
+					a.Anchored = true
+					a.CanCollide = false
+					a.CanQuery = false
+					a.CanTouch = false
+					a.CastShadow = false
+					a.Transparency = 1
+					a.Size = Vector3.new(0.2, 0.2, 0.2)
+					a.Parent = part
+					fill.Parent = a
+					anchor = a
+				end
+				(anchor :: Part).CFrame = CFrame.new(hit.Position - look * math.min(2, dist * 0.5))
+				fill.Enabled = true
+				-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
+				fill.Brightness = 1.6 * (1 - dist / reach) + 0.2
+				fill.Range = 6 + dist * 0.4
+			end
+		end
 	end
 end
 

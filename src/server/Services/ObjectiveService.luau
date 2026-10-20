@@ -73,8 +73,8 @@ local function setCarrying(player: Player, carrying: boolean)
 		local fuse = Instance.new("Part")
 		fuse.Name = "CarriedFuse"
 		fuse.Size = Vector3.new(0.4, 0.8, 0.4)
-		fuse.Material = Enum.Material.Neon
-		fuse.Color = Color3.fromRGB(255, 200, 60)
+		fuse.Material = Enum.Material.Metal
+		fuse.Color = Color3.fromRGB(200, 160, 60)
 		fuse.CanCollide = false
 		fuse.CanQuery = false
 		fuse.Massless = true
@@ -96,12 +96,13 @@ local function spawnFuse(position: Vector3)
 	fuse.Anchored = true
 	fuse.CanCollide = false
 	fuse.Size = Vector3.new(0.6, 1.2, 0.6)
-	fuse.Material = Enum.Material.Neon
-	fuse.Color = Color3.fromRGB(255, 200, 60)
+	-- Discreto a propósito: hay que buscarlo con la linterna.
+	fuse.Material = Enum.Material.Metal
+	fuse.Color = Color3.fromRGB(200, 160, 60)
 	fuse.CFrame = CFrame.new(position + Vector3.new(0, 0.6, 0))
 	local glow = Instance.new("PointLight")
-	glow.Range = 6
-	glow.Brightness = 0.6
+	glow.Range = 3
+	glow.Brightness = 0.15
 	glow.Color = fuse.Color
 	glow.Parent = fuse
 	local prompt = makePrompt(fuse, "Recoger", "Fusible", 0)
