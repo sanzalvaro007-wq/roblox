@@ -2,7 +2,9 @@
 -- Catálogo de formas de la Anomalía. Las mismas definiciones se usan para
 -- amueblar la mansión (señuelos) y para el disfraz, así son idénticos.
 -- Coordenadas: origen en el centro del suelo del objeto, el frente mira a -Z.
--- Placeholders grises/madera hasta tener los modelos de Blender.
+-- Si en ReplicatedStorage hay una carpeta "PropModels" con los modelos importados de
+-- Blender (tools/blender/mimic_props.py), se usan esos; si falta alguno, ese mueble se
+-- construye con bloques. Así el juego funciona igual antes y después de importarlos.
 
 export type PropPart = {
 	name: string,
@@ -219,7 +221,27 @@ local list: { PropDef } = {
 	},
 }
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local PropCatalog = {}
+
+-- Acabados de las mallas de Blender: cada malla se llama "<Id>_<Acabado>".
+local FINISHES: { [string]: { color: Color3, material: Enum.Material } } = {
+	Wood = { color = WOOD, material = Enum.Material.Wood },
+	DarkWood = { color = DARK_WOOD, material = Enum.Material.Wood },
+	Brass = { color = BRASS, material = Enum.Material.Metal },
+	Cloth = { color = CLOTH, material = Enum.Material.Fabric },
+	Porcelain = { color = PORCELAIN, material = Enum.Material.SmoothPlastic },
+	Stone = { color = STONE, material = Enum.Material.Marble },
+	Glass = { color = Color3.fromRGB(30, 30, 30), material = Enum.Material.Glass },
+	Mirror = { color = Color3.fromRGB(170, 185, 195), material = Enum.Material.Glass },
+	Shade = { color = Color3.fromRGB(196, 170, 120), material = Enum.Material.Fabric },
+	BookRed = { color = Color3.fromRGB(90, 30, 30), material = Enum.Material.Fabric },
+	BookGreen = { color = Color3.fromRGB(30, 60, 40), material = Enum.Material.Fabric },
+	BookBlue = { color = Color3.fromRGB(40, 40, 80), material = Enum.Material.Fabric },
+	Blood = { color = Color3.fromRGB(120, 0, 0), material = Enum.Material.SmoothPlastic },
+	Black = { color = Color3.fromRGB(15, 12, 12), material = Enum.Material.SmoothPlastic },
+}
 
 PropCatalog.List = list
 PropCatalog.ById = {} :: { [string]: PropDef }
@@ -231,12 +253,86 @@ function PropCatalog.Get(id: string): PropDef?
 	return PropCatalog.ById[id]
 end
 
+-- Modelo importado normalizado (escala y pivote) por id; false = no hay modelo importado.
+local prototypes: { [string]: Model | false } = {}
+
+local function importedParts(id: string): { BasePart }
+	local folder = ReplicatedStorage:FindFirstChild("PropModels")
+	if not folder then
+		return {}
+	end
+	-- El importador puede dejar el mueble como un Model con su id o aplanar las mallas
+	-- ("Wardrobe_Wood"...): aceptamos las dos cosas.
+	local found = folder:FindFirstChild(id, true)
+	local candidates = if found then { found :: Instance, table.unpack(found:GetDescendants()) } else folder:GetDescendants()
+	local parts: { BasePart } = {}
+	for _, d in candidates do
+		if d:IsA("BasePart") and (found ~= nil or string.sub(d.Name, 1, #id + 1) == id .. "_") then
+			table.insert(parts, d)
+		end
+	end
+	return parts
+end
+
+local function prototype(def: PropDef): Model?
+	local cached = prototypes[def.id]
+	if cached ~= nil then
+		return if cached then cached :: Model else nil
+	end
+	local sources = importedParts(def.id)
+	if #sources == 0 then
+		prototypes[def.id] = false
+		return nil
+	end
+	local model = Instance.new("Model")
+	model.Name = "Prop"
+	local biggest: BasePart? = nil
+	for _, source in sources do
+		local p = source:Clone()
+		for _, child in p:GetChildren() do
+			if not child:IsA("SurfaceAppearance") then
+				child:Destroy()
+			end
+		end
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = true
+		p.CastShadow = true
+		local finish = FINISHES[string.match(p.Name, "_(%w+)$") or p.Name]
+		if finish then
+			p.Color = finish.color
+			p.Material = finish.material
+		end
+		p.Parent = model
+		if not biggest or p.Size.Magnitude > (biggest :: BasePart).Size.Magnitude then
+			biggest = p
+		end
+	end
+	-- Misma altura que el placeholder, sea cual sea la escala con la que se importó.
+	local _, size = model:GetBoundingBox()
+	if size.Y > 0 then
+		model:ScaleTo(def.footprint.Y / size.Y)
+	end
+	local box, scaled = model:GetBoundingBox()
+	model.PrimaryPart = biggest
+	model.WorldPivot = CFrame.new(box.Position - Vector3.new(0, scaled.Y / 2, 0))
+	model:PivotTo(CFrame.new())
+	prototypes[def.id] = model
+	return model
+end
+
 -- Construye el modelo del objeto con el pivote en el centro del suelo.
 -- Las partes salen ancladas; quien lo use decide si las suelda o las deja fijas.
 function PropCatalog.Build(id: string): Model?
 	local def = PropCatalog.ById[id]
 	if not def then
 		return nil
+	end
+	local imported = prototype(def)
+	if imported then
+		local copy = imported:Clone()
+		copy:SetAttribute("PropId", id)
+		return copy
 	end
 	local model = Instance.new("Model")
 	model.Name = "Prop"

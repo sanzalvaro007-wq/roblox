@@ -62,6 +62,19 @@ En móvil aparecen botones táctiles, y también funciona con mando.
 
 Todos los números de equilibrio están en `src/shared/Config.luau`.
 
+## Modelos de Blender
+
+`tools/blender/mimic_props.py` genera los 13 muebles (los 10 normales y las 3 formas del gacha) con las mismas medidas que los bloques y los exporta a `assets/models/` (un `.glb` por mueble, `MimicProps.glb` con todos y `MimicProps.blend` para editarlos).
+
+```bash
+blender -b -P tools/blender/mimic_props.py -- assets/models   # o: pip install bpy && python tools/blender/mimic_props.py assets/models
+```
+
+Para usarlos en el juego:
+1. En Studio, **Archivo → Importar 3D** y elige `assets/models/MimicProps.glb`.
+2. Crea una carpeta llamada `PropModels` en `ReplicatedStorage` y arrastra dentro lo importado.
+3. Publica. El juego busca cada mueble por su nombre (`Wardrobe`, `Chair`…), lo escala a la altura correcta y le pone color y material según el acabado (`Wardrobe_Wood`, `Wardrobe_Brass`…). Si falta alguno, ese mueble se sigue haciendo con bloques.
+
 ## Tests
 
 ```bash
