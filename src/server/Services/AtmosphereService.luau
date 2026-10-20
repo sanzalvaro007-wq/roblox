@@ -8,16 +8,16 @@ local AtmosphereService = {}
 
 function AtmosphereService.Init()
 	Lighting.ClockTime = 0
-	Lighting.Brightness = 0.2
-	Lighting.Ambient = Color3.fromRGB(8, 8, 12)
-	Lighting.OutdoorAmbient = Color3.fromRGB(18, 18, 26)
+	Lighting.Brightness = 0.5
+	Lighting.Ambient = Color3.fromRGB(24, 24, 30)
+	Lighting.OutdoorAmbient = Color3.fromRGB(32, 32, 42)
 	Lighting.EnvironmentDiffuseScale = 0.2
 	Lighting.EnvironmentSpecularScale = 0.3
-	Lighting.ExposureCompensation = -0.2
+	Lighting.ExposureCompensation = 0
 	Lighting.GlobalShadows = true
 
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density = 0.45
+	atmosphere.Density = 0.35
 	atmosphere.Offset = 0
 	atmosphere.Color = Color3.fromRGB(40, 42, 50)
 	atmosphere.Decay = Color3.fromRGB(20, 20, 28)

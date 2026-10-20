@@ -49,6 +49,7 @@ Todo es autoritativo en el servidor: el cliente solo pide acciones y el servidor
 | Atacar | | Clic |
 | Fantasma: lámpara / susurro / revivir | Z / X / R | |
 | Tienda (lobby) | B | B |
+| Cómo jugar | F1 o botón ? | F1 o botón ? |
 
 En móvil aparecen botones táctiles, y también funciona con mando.
 

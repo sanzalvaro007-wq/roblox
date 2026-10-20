@@ -238,11 +238,13 @@ local function build()
 		Parent = gui,
 	}, { make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }) })
 
+	-- A la derecha, bajo el rol: arriba a la izquierda está el chat de Roblox.
 	objectiveLabel = label({
 		Name = "Objective",
-		Position = UDim2.new(0, 16, 0, 60),
-		Size = UDim2.new(0, 360, 0, 50),
-		TextXAlignment = Enum.TextXAlignment.Left,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -16, 0, 92),
+		Size = UDim2.new(0, 420, 0, 90),
+		TextXAlignment = Enum.TextXAlignment.Right,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
 		Parent = gui,
@@ -433,7 +435,7 @@ local function update()
 		elseif powerOn then
 			objectiveLabel.Text = "¡Energía restaurada! Escapa por la puerta principal."
 		else
-			local carrying = if player:GetAttribute("CarryingFuse") == true then "\nLlevas un fusible: búscale la caja." else ""
+			local carrying = if player:GetAttribute("CarryingFuse") == true then "\nLlevas un fusible: llévalo a la caja (sigue el marcador)." else ""
 			objectiveLabel.Text = string.format("Repara la caja de fusibles: %d/%d%s", inserted, required, carrying)
 		end
 	else

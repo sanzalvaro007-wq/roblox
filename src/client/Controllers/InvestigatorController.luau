@@ -187,49 +187,68 @@ local function refresh()
 	end
 end
 
--- Linterna local que sigue a la cámara (con inclinación). La del servidor,
--- pegada a la cabeza, es la que ven los demás; localmente la apagamos para no duplicar.
+-- Linterna local que sigue a la cámara (con inclinación). La del servidor, pegada a la
+-- cabeza, es la que ven los demás; localmente la apagamos para no duplicar.
+-- La pieza va en workspace (no en la cámara): las luces dentro de Camera no siempre iluminan.
+local AURA_RANGE = 9
+
+local function makeLocalLight(): Part
+	local part = Instance.new("Part")
+	part.Name = "LocalFlashlight"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Transparency = 1
+	part.Size = Vector3.new(0.2, 0.2, 0.2)
+	local beam = Instance.new("SpotLight")
+	beam.Name = "Beam"
+	beam.Brightness = 4
+	beam.Color = Color3.fromRGB(255, 240, 210)
+	beam.Shadows = true
+	beam.Face = Enum.NormalId.Front
+	beam.Parent = part
+	-- Halo tenue para ver tus pies y lo que tienes al lado, incluso sin linterna.
+	local aura = Instance.new("PointLight")
+	aura.Name = "Aura"
+	aura.Range = AURA_RANGE
+	aura.Brightness = 0.25
+	aura.Color = Color3.fromRGB(200, 200, 220)
+	aura.Shadows = false
+	aura.Parent = part
+	part.Parent = workspace
+	return part
+end
+
 local function updateLocalFlashlight()
-	local on = active() and player:GetAttribute("Flashlight") == true
+	local inPlay = active()
+	local on = inPlay and player:GetAttribute("Flashlight") == true
 	local character = player.Character
 	local head = if character then character:FindFirstChild("Head") else nil
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
-	local angle, range = 55, 45
+	local angle, range = 60, 50
 	if serverLight and serverLight:IsA("SpotLight") then
-		serverLight.Brightness = if on then 0 else 2.2
+		serverLight.Brightness = if on then 0 else 3
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
 	end
-	if on then
-		if not localLightPart then
-			local part = Instance.new("Part")
-			part.Name = "LocalFlashlight"
-			part.Anchored = true
-			part.CanCollide = false
-			part.CanQuery = false
-			part.CanTouch = false
-			part.Transparency = 1
-			part.Size = Vector3.new(0.2, 0.2, 0.2)
-			local light = Instance.new("SpotLight")
-			light.Angle = 55
-			light.Range = 45
-			light.Brightness = 2.2
-			light.Color = Color3.fromRGB(255, 240, 210)
-			light.Shadows = true
-			light.Face = Enum.NormalId.Front
-			light.Parent = part
-			part.Parent = workspace.CurrentCamera
-			localLightPart = part
+	if not inPlay then
+		if localLightPart then
+			localLightPart:Destroy()
+			localLightPart = nil
 		end
-		local part = localLightPart :: Part
-		part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0.6, -0.5, 0)
-		local light = part:FindFirstChildOfClass("SpotLight")
-		if light then
-			light.Angle = angle
-			light.Range = range
-		end
-	elseif localLightPart then
-		localLightPart:Destroy()
-		localLightPart = nil
+		return
+	end
+	if not localLightPart then
+		localLightPart = makeLocalLight()
+	end
+	local part = localLightPart :: Part
+	part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0.4, -0.4, -0.5)
+	local beam = part:FindFirstChild("Beam") :: SpotLight?
+	if beam then
+		beam.Enabled = on
+		beam.Angle = angle
+		beam.Range = range
 	end
 end
 

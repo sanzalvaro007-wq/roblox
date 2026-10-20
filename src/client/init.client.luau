@@ -13,6 +13,8 @@ local ORDER = {
 	"VoiceController",
 	"GhostController",
 	"ShopController",
+	"WaypointController",
+	"HelpController",
 }
 
 local loaded = {}

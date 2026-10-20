@@ -51,6 +51,9 @@ local function makePrompt(parent: BasePart, action: string, object: string, hold
 	prompt.HoldDuration = hold
 	prompt.MaxActivationDistance = 8
 	prompt.RequiresLineOfSight = true
+	-- Sin clic: si el aviso es clicable, en primera persona captura el ratón y la cámara
+	-- se queda bloqueada mientras lo miras.
+	prompt.ClickablePrompt = false
 	prompt.Parent = parent
 	return prompt
 end
@@ -149,8 +152,8 @@ local function setPower(on: boolean)
 	for _, lamp in lamps do
 		local light = lamp:FindFirstChildOfClass("PointLight")
 		if light then
-			light.Brightness = if on then 1.3 else 0.35
-			light.Range = if on then 26 else 20
+			light.Brightness = if on then 1.6 else 0.6
+			light.Range = if on then 30 else 24
 		end
 		if on then
 			lamp:SetAttribute("Flicker", false)

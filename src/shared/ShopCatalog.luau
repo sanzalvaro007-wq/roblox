@@ -22,7 +22,7 @@ ShopCatalog.Items = {
 	{
 		id = "Flashlight_Lantern",
 		name = "Farol",
-		description = "Haz más ancho (75°) pero más corto (35 studs).",
+		description = "Haz más ancho (85°) pero más corto (38 studs).",
 		price = 400,
 		category = "Flashlight",
 		slot = "Flashlight",
@@ -30,7 +30,7 @@ ShopCatalog.Items = {
 	{
 		id = "Flashlight_Tactical",
 		name = "Linterna táctica",
-		description = "Haz estrecho (38°) y largo (60 studs). Gasta un 15% más.",
+		description = "Haz estrecho (40°) y largo (60 studs). Gasta un 15% más.",
 		price = 600,
 		category = "Flashlight",
 		slot = "Flashlight",
@@ -67,9 +67,10 @@ end
 
 -- Variantes de linterna (la de serie es "Default").
 ShopCatalog.Flashlights = {
-	Default = { angle = 55, range = 45, drain = 1 },
-	Flashlight_Lantern = { angle = 75, range = 35, drain = 1 },
-	Flashlight_Tactical = { angle = 38, range = 60, drain = 1.15 },
+	-- Roblox limita el alcance de las luces a 60 studs.
+	Default = { angle = 60, range = 50, drain = 1 },
+	Flashlight_Lantern = { angle = 85, range = 38, drain = 1 },
+	Flashlight_Tactical = { angle = 40, range = 60, drain = 1.15 },
 }
 
 -- Gacha "Cofre maldito": formas cosméticas de la Anomalía con kill cam propia.

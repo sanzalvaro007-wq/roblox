@@ -238,8 +238,8 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 			lamp.CanCollide = false
 			local light = Instance.new("PointLight")
 			light.Color = Color3.fromRGB(255, 190, 130)
-			light.Range = 20
-			light.Brightness = 0.35
+			light.Range = 24
+			light.Brightness = 0.6
 			light.Shadows = true
 			light.Parent = lamp
 			lamp:SetAttribute("Flicker", rng.float() < 0.35)

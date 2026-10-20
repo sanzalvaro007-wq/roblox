@@ -43,7 +43,7 @@ Config.Investigator = {
 	StaminaRegen = 12,
 	StaminaMinToSprint = 15,
 	BatteryMax = 100,
-	BatteryDrain = 1.25, -- por segundo con la linterna encendida (80 s)
+	BatteryDrain = 0.6, -- por segundo con la linterna encendida (~2:45 min)
 	BatteryPickupAmount = 50,
 	Film = 6,
 	PhotoCooldown = 3,
@@ -124,9 +124,9 @@ Config.Objectives = {
 	FusesMax = 6,
 	FuseInsertHold = 1.5,
 	EscapeHold = 2,
-	BatteryPickups = 5,
-	LampRadiusPowerOff = 8,
-	LampRadiusPowerOn = 18,
+	BatteryPickups = 7,
+	LampRadiusPowerOff = 10,
+	LampRadiusPowerOn = 20,
 }
 
 Config.Mansion = {
