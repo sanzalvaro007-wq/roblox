@@ -16,6 +16,7 @@ local Enums = require(Shared:WaitForChild("Enums"))
 local PropCatalog = require(Shared:WaitForChild("PropCatalog"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local DoorController = require(script.Parent:WaitForChild("DoorController"))
 local ProfileController = require(script.Parent:WaitForChild("ProfileController"))
 local UIController = require(script.Parent:WaitForChild("UIController"))
 
@@ -37,6 +38,52 @@ local function active(): boolean
 	return player:GetAttribute("Role") == Enums.Role.Anomaly
 		and player:GetAttribute("Alive") == true
 		and (state == Enums.RoundState.Playing or state == Enums.RoundState.Preparing)
+end
+
+-- Igual que CombatService.findTarget: ¿alcanzaría el zarpazo a algún Investigador? Si es
+-- así, el clic ataca aunque la cruz esté sobre una puerta.
+local function targetInReach(): boolean
+	if not active() or ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
+		return false
+	end
+	if (menu and menu.Visible) or os.clock() - lastAttackAt < Config.Anomaly.AttackCooldown then
+		return false
+	end
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not character or not root or not root:IsA("BasePart") then
+		return false
+	end
+	local forward = workspace.CurrentCamera.CFrame.LookVector * Vector3.new(1, 0, 1)
+	forward = if forward.Magnitude > 0 then forward.Unit else Vector3.new(0, 0, -1)
+	local range = Config.Anomaly.AttackRange + (if currentProp then 2 else 0)
+	local minDot = if currentProp then -0.2 else 0.35
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	for _, other in Players:GetPlayers() do
+		local vChar = other.Character
+		local vRoot = if vChar then vChar:FindFirstChild("HumanoidRootPart") else nil
+		if
+			vChar
+			and vRoot
+			and vRoot:IsA("BasePart")
+			and other:GetAttribute("Role") == Enums.Role.Investigator
+			and other:GetAttribute("Alive") == true
+			and other:GetAttribute("Escaped") ~= true
+		then
+			local offset = vRoot.Position - root.Position
+			local flat = offset * Vector3.new(1, 0, 1)
+			local dot = if flat.Magnitude > 0 then forward:Dot(flat.Unit) else 1
+			if offset.Magnitude <= range and dot >= minDot then
+				local hit = workspace:Raycast(root.Position, offset, params)
+				if not hit or hit.Instance:IsDescendantOf(vChar) then
+					return true
+				end
+			end
+		end
+	end
+	return false
 end
 
 local function setMenu(open: boolean)
@@ -139,6 +186,10 @@ local function handle(actionName: string, inputState: Enum.UserInputState, input
 	elseif actionName == "MM_Attack" then
 		if menu.Visible then
 			return Enum.ContextActionResult.Pass
+		end
+		-- Clic sobre una puerta: se abre o se cierra, salvo que el zarpazo alcance a alguien.
+		if DoorController.TryClick() then
+			return Enum.ContextActionResult.Sink
 		end
 		if ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
 			UIController.Toast("Aún no puedes atacar: espera a que empiece la partida", "warn")
@@ -362,6 +413,7 @@ function AnomalyController.Start()
 		player:GetAttributeChangedSignal(attr):Connect(refresh)
 	end
 	refresh()
+	DoorController.Defer(targetInReach)
 
 	Remotes.Event("MorphState").OnClientEvent:Connect(function(propId)
 		currentProp = if typeof(propId) == "string" then propId else nil

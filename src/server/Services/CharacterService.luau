@@ -17,15 +17,19 @@ CharacterService.Groups = {
 	Anomaly = "Anomaly",
 	Disguise = "Disguise",
 	Ghost = "Ghost",
+	Door = "Door", -- hojas de las puertas (ver Mansion/Doors)
 }
 
 local lobbySpawn = CFrame.new(Config.Lobby.Position + Vector3.new(0, 4, 0))
 
 local function setupCollisionGroups()
 	local g = CharacterService.Groups
-	for _, name in { g.Players, g.Anomaly, g.Disguise, g.Ghost } do
+	for _, name in { g.Players, g.Anomaly, g.Disguise, g.Ghost, g.Door } do
 		PhysicsService:RegisterCollisionGroup(name)
 	end
+	-- Los fantasmas atraviesan las puertas; los disfraces no chocan con el decorado.
+	PhysicsService:CollisionGroupSetCollidable(g.Door, g.Ghost, false)
+	PhysicsService:CollisionGroupSetCollidable(g.Door, g.Disguise, false)
 	-- Los fantasmas chocan con la mansión pero atraviesan a todo el mundo.
 	for _, other in { g.Players, g.Anomaly, g.Disguise, g.Ghost } do
 		PhysicsService:CollisionGroupSetCollidable(g.Ghost, other, false)

@@ -221,8 +221,8 @@ local function setPower(on: boolean)
 	for _, lamp in lamps do
 		local light = lamp:FindFirstChildOfClass("PointLight")
 		if light then
-			light.Brightness = if on then 1.6 else 0.6
-			light.Range = if on then 30 else 24
+			light.Brightness = if on then O.LampBrightnessPowerOn else O.LampBrightnessPowerOff
+			light.Range = if on then O.LampRangePowerOn else O.LampRangePowerOff
 		end
 		if on then
 			lamp:SetAttribute("Flicker", false)

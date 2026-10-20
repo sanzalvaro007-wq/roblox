@@ -4,6 +4,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local AmbienceController = {}
@@ -11,6 +12,7 @@ local AmbienceController = {}
 local burstUntil = 0
 local burstCenter: Vector3? = nil
 local BURST_RADIUS = 40
+local baseColor: { [BasePart]: Color3 } = setmetatable({}, { __mode = "k" }) :: any
 
 -- Ráfaga de parpadeo local alrededor de `center` (alucinación o susto).
 function AmbienceController.Burst(center: Vector3, duration: number)
@@ -46,12 +48,21 @@ local function step()
 		else
 			light.Enabled = true
 		end
-		lamp.Material = if light.Enabled then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		-- Sin corriente el globo no brilla: en las arañas solo quedan las llamitas de las velas
+		-- y las bombillas (sin velas) dejan un filamento tenue. Así se nota cuando se apagan.
+		local powered = ReplicatedStorage:GetAttribute("PowerOn") == true
+		local color = baseColor[lamp] or lamp.Color
+		baseColor[lamp] = color
+		local hasFlames = false
 		for _, flame in lamp:GetChildren() do
 			if flame:IsA("BasePart") and flame.Name == "Flame" then
+				hasFlames = true
 				flame.Transparency = if light.Enabled then 0 else 1
 			end
 		end
+		local glowing = light.Enabled and (powered or not hasFlames)
+		lamp.Material = if glowing then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		lamp.Color = if glowing and not powered then color:Lerp(Color3.new(0, 0, 0), 0.72) else color
 	end
 
 	-- Los ojos de los cuadros se encienden cuando tu cordura baja.

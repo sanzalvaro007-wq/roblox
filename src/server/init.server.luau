@@ -21,6 +21,7 @@ local ORDER = {
 	"CombatService",
 	"ToolService",
 	"NoiseService",
+	"DoorService",
 	"GhostService",
 	"ObjectiveService",
 	"FootprintService",

@@ -22,6 +22,7 @@ local EVENTS = {
 	"GachaRoll", -- ()
 	"UseRevive", -- () siendo fantasma
 	"PlaceTrap", -- ()
+	"ToggleDoor", -- (door: BasePart) abrir o cerrar una puerta cercana
 
 	-- Servidor -> Cliente
 	"Notify", -- (text: string, kind: string?)

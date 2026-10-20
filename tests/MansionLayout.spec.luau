@@ -42,8 +42,8 @@ local function check(cond: boolean, msg: string)
 end
 
 -- 1. El layout de respaldo siempre es válido.
-do
-	local layout = MansionLayout.Fallback(params, makeRng(1))
+for seed = 1, 50 do
+	local layout = MansionLayout.Fallback(params, makeRng(seed))
 	local ok, err = MansionLayout.Validate(layout, params)
 	check(ok, "fallback inválido: " .. tostring(err))
 end
@@ -65,6 +65,15 @@ for seed = 1, SEEDS do
 	end
 	local ok, err = MansionLayout.Validate(layout, params)
 	check(ok, "semilla " .. seed .. " inválida: " .. tostring(err))
+	-- Siempre hay garaje (con la caja de fusibles), salón, dormitorio y baño.
+	local kinds: { [string]: number } = {}
+	for _, room in layout.rooms do
+		kinds[room.kind] = (kinds[room.kind] or 0) + 1
+	end
+	check(kinds[MansionLayout.GarageKind] == 1, "semilla " .. seed .. ": no hay exactamente un garaje")
+	for _, kind in { "Salón", "Dormitorio", "Baño" } do
+		check((kinds[kind] or 0) >= 1, "semilla " .. seed .. ": falta " .. kind)
+	end
 end
 check(fallbacks / SEEDS < 0.02, "demasiados respaldos: " .. fallbacks)
 

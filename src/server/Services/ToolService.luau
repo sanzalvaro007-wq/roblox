@@ -66,7 +66,7 @@ function ToolService.Setup(player: Player)
 		light.Name = "Flashlight"
 		light.Angle = variant.angle
 		light.Range = variant.range
-		light.Brightness = 1.8
+		light.Brightness = 1.3
 		light.Color = Color3.fromRGB(255, 240, 210)
 		light.Shadows = true
 		light.Face = Enum.NormalId.Front

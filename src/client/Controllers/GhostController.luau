@@ -22,6 +22,34 @@ local GhostController = {}
 local bound = false
 local tint: ColorCorrectionEffect
 local hint: TextLabel
+local glow: Part? = nil
+
+-- Resplandor frío que solo ve el propio fantasma: sin él, con las lámparas tan flojas,
+-- no vería nada hasta que vuelva la corriente. Va en workspace (en Camera no siempre ilumina).
+local function ghostGlow(): Part
+	local part = glow
+	if part and part.Parent then
+		return part
+	end
+	local newPart = Instance.new("Part")
+	newPart.Name = "GhostGlow"
+	newPart.Anchored = true
+	newPart.CanCollide = false
+	newPart.CanQuery = false
+	newPart.CanTouch = false
+	newPart.CastShadow = false
+	newPart.Transparency = 1
+	newPart.Size = Vector3.new(0.2, 0.2, 0.2)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(170, 195, 255)
+	light.Brightness = 0.6
+	light.Range = 16
+	light.Shadows = false
+	light.Parent = newPart
+	newPart.Parent = workspace
+	glow = newPart
+	return newPart
+end
 
 local function localIsGhost(): boolean
 	return player:GetAttribute("Ghost") == true
@@ -68,6 +96,15 @@ local function step()
 	local meGhost = localIsGhost()
 	tint.Enabled = meGhost
 	hint.Visible = meGhost
+	local myRoot = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") else nil
+	if meGhost and myRoot and myRoot:IsA("BasePart") then
+		local part = ghostGlow()
+		part.CFrame = CFrame.new(myRoot.Position + Vector3.new(0, 2, 0))
+	end
+	local light = if glow then glow:FindFirstChildOfClass("PointLight") else nil
+	if light then
+		light.Enabled = meGhost
+	end
 	for _, p in Players:GetPlayers() do
 		local character = p.Character
 		if not character then

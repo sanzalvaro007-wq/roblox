@@ -13,6 +13,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Enums = require(Shared:WaitForChild("Enums"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local DoorController = require(script.Parent:WaitForChild("DoorController"))
 local UIController = require(script.Parent:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
@@ -68,6 +69,48 @@ local function takePhoto()
 	playSound(Config.Sounds.Shutter, 0.6)
 end
 
+-- ¿Saldría la Anomalía en la foto? Solo cuenta si se la ve (sin disfraz): entonces el clic
+-- dispara el flash aunque detrás haya una puerta. Imita ToolService.canSee.
+local function anomalyInShot(): boolean
+	if not active() or ReplicatedStorage:GetAttribute("RoundState") ~= Enums.RoundState.Playing then
+		return false
+	end
+	local film = player:GetAttribute("Film")
+	if player:GetAttribute("EquippedTool") ~= Enums.Tool.Camera or typeof(film) ~= "number" or film <= 0 then
+		return false
+	end
+	local camera = workspace.CurrentCamera.CFrame
+	local ignore: { Instance } = {}
+	local target: Model? = nil
+	for _, other in Players:GetPlayers() do
+		local character = other.Character
+		if character then
+			if other:GetAttribute("Role") == Enums.Role.Anomaly then
+				target = character
+			elseif other:GetAttribute("Role") == Enums.Role.Investigator then
+				table.insert(ignore, character)
+			end
+		end
+	end
+	if not target then
+		return false
+	end
+	local head = target:FindFirstChild("Head")
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not head or not head:IsA("BasePart") or head.Transparency >= 1 or not root or not root:IsA("BasePart") then
+		return false
+	end
+	local offset = root.Position - camera.Position
+	if offset.Magnitude > Config.Investigator.PhotoRange or camera.LookVector:Dot(offset.Unit) < math.cos(math.rad(Config.Investigator.PhotoConeDegrees / 2)) then
+		return false
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(camera.Position, offset, params)
+	return hit == nil or hit.Instance:IsDescendantOf(target)
+end
+
 local function handle(actionName: string, inputState: Enum.UserInputState, _input: InputObject): Enum.ContextActionResult
 	if not active() then
 		return Enum.ContextActionResult.Pass
@@ -112,6 +155,10 @@ local function handle(actionName: string, inputState: Enum.UserInputState, _inpu
 			else Enums.Tool.Camera
 		Remotes.Event("EquipTool"):FireServer(nextTool)
 	elseif actionName == "MM_Use" then
+		-- Clic sobre una puerta: abrirla o cerrarla, salvo que la Anomalía salga en la foto.
+		if DoorController.TryClick() then
+			return Enum.ContextActionResult.Sink
+		end
 		if player:GetAttribute("EquippedTool") == Enums.Tool.Camera then
 			takePhoto()
 			return Enum.ContextActionResult.Sink
@@ -213,7 +260,7 @@ local function makeLocalLight(): Part
 	local part = lightPart("LocalFlashlight", workspace)
 	local beam = Instance.new("SpotLight")
 	beam.Name = "Beam"
-	beam.Brightness = 2.2
+	beam.Brightness = 1.5
 	beam.Color = Color3.fromRGB(255, 240, 210)
 	beam.Shadows = true
 	beam.Face = Enum.NormalId.Front
@@ -221,8 +268,8 @@ local function makeLocalLight(): Part
 	-- Luz cercana sin sombras: ilumina lo que tienes pegado delante aunque el cono no llegue.
 	local near = Instance.new("PointLight")
 	near.Name = "Near"
-	near.Range = 6
-	near.Brightness = 0.4
+	near.Range = 5
+	near.Brightness = 0.25
 	near.Color = beam.Color
 	near.Shadows = false
 	near.Parent = part
@@ -251,7 +298,7 @@ local function updateLocalFlashlight()
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
 	local angle, range = 60, 50
 	if serverLight and serverLight:IsA("SpotLight") then
-		serverLight.Brightness = if on then 0 else 1.8
+		serverLight.Brightness = if on then 0 else 1.3
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
 	end
 	if not inPlay then
@@ -305,7 +352,7 @@ local function updateLocalFlashlight()
 			local dist = (hit.Position - origin).Magnitude
 			anchor.CFrame = CFrame.new(hit.Position + hit.Normal * math.clamp(dist * 0.5, 0.4, 2))
 			-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
-			fill.Brightness = 0.9 * (1 - dist / FILL_REACH) + 0.15
+			fill.Brightness = 0.6 * (1 - dist / FILL_REACH) + 0.1
 			fill.Range = 5 + dist * 0.3
 		end
 	end
@@ -353,6 +400,7 @@ function InvestigatorController.Start()
 		player:GetAttributeChangedSignal(attr):Connect(refresh)
 	end
 	refresh()
+	DoorController.Defer(anomalyInShot)
 
 	Remotes.Event("PhotoResult").OnClientEvent:Connect(function(hit)
 		if hit then

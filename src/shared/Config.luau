@@ -127,8 +127,13 @@ Config.Objectives = {
 	BatteryPickups = 5,
 	CrateOpenHold = 1.2, -- los fusibles están dentro de cajas que hay que abrir
 	DecoyCrates = 4, -- cajas extra: vacías o con una pila
-	LampRadiusPowerOff = 10,
+	LampRadiusPowerOff = 6, -- radio en el que una lámpara cuenta como luz para la cordura
 	LampRadiusPowerOn = 20,
+	-- Sin corriente las lámparas apenas dan luz; con todos los fusibles se encienden.
+	LampBrightnessPowerOff = 0.12,
+	LampRangePowerOff = 12,
+	LampBrightnessPowerOn = 1.5,
+	LampRangePowerOn = 30,
 }
 
 Config.Mansion = {

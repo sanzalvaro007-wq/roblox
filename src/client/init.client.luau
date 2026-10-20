@@ -6,6 +6,7 @@ local ORDER = {
 	"ProfileController",
 	"UIController",
 	"AmbienceController",
+	"DoorController",
 	"InvestigatorController",
 	"AnomalyController",
 	"SanityController",

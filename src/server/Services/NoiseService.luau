@@ -30,6 +30,17 @@ local voice: { [Player]: VoiceSample } = {}
 local emoteUntil: { [Player]: number } = {}
 local lastEmote: { [Player]: number } = {}
 local lastPing: { [Player]: number } = {}
+local bumps: { [Player]: { level: number, untilAt: number } } = {}
+
+-- Ruido puntual de una acción (abrir una puerta, una caja...).
+function NoiseService.Bump(player: Player, level: number, duration: number)
+	local now = os.clock()
+	local current = bumps[player]
+	if current and current.untilAt > now and current.level > level then
+		return
+	end
+	bumps[player] = { level = level, untilAt = now + duration }
+end
 
 function NoiseService.NoiseOf(player: Player): number
 	local now = os.clock()
@@ -40,6 +51,10 @@ function NoiseService.NoiseOf(player: Player): number
 	end
 	if (emoteUntil[player] or 0) > now then
 		level = math.max(level, N.EmoteNoise)
+	end
+	local bump = bumps[player]
+	if bump and bump.untilAt > now then
+		level = math.max(level, bump.level)
 	end
 	return level
 end
@@ -127,6 +142,7 @@ function NoiseService.Reset(player: Player)
 	emoteUntil[player] = nil
 	lastEmote[player] = nil
 	lastPing[player] = nil
+	bumps[player] = nil
 	player:SetAttribute("Noise", nil)
 end
 

@@ -27,9 +27,27 @@ local function piece(parent: Instance, name: string, size: Vector3, cf: CFrame, 
 	return p
 end
 
+-- Bombilla desnuda con pantalla de metal, para el garaje y los baños.
+local function bulb(parent: Instance, ceilingPoint: Vector3): Part
+	local model = Instance.new("Model")
+	model.Name = "Bulb"
+	model.Parent = parent
+	local drop = 2.6
+	piece(model, "Cord", Vector3.new(0.08, drop, 0.08), CFrame.new(ceilingPoint - Vector3.new(0, drop / 2, 0)), Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic)
+	local shade = piece(model, "Shade", Vector3.new(0.5, 1.8, 1.8), CFrame.new(ceilingPoint - Vector3.new(0, drop, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(60, 65, 60), Enum.Material.CorrodedMetal)
+	shade.Shape = Enum.PartType.Cylinder
+	local lamp = piece(model, "Lamp", Vector3.new(0.6, 0.6, 0.6), CFrame.new(ceilingPoint - Vector3.new(0, drop + 0.45, 0)), Color3.fromRGB(255, 225, 170), Enum.Material.Neon)
+	lamp.Shape = Enum.PartType.Ball
+	return lamp
+end
+
 -- Araña de bronce con velas. Devuelve la pieza "Lamp" (globo central con la luz), que es
 -- la que parpadea y apagan los fantasmas; las llamas son hijas suyas y se apagan con ella.
-function Decor.Chandelier(parent: Instance, ceilingPoint: Vector3): Part
+-- Con style = "Bulb" es una bombilla colgada (garaje, baños).
+function Decor.Chandelier(parent: Instance, ceilingPoint: Vector3, style: string?): Part
+	if style == "Bulb" then
+		return bulb(parent, ceilingPoint)
+	end
 	local model = Instance.new("Model")
 	model.Name = "Chandelier"
 	model.Parent = parent

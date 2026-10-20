@@ -10,6 +10,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local PropCatalog = require(Shared:WaitForChild("PropCatalog"))
 local MansionLayout = require(script.Parent:WaitForChild("MansionLayout"))
 local Decor = require(script.Parent:WaitForChild("Decor"))
+local Doors = require(script.Parent:WaitForChild("Doors"))
+local RoomThemes = require(script.Parent:WaitForChild("RoomThemes"))
 
 type Layout = MansionLayout.Layout
 type Cell = MansionLayout.Cell
@@ -25,6 +27,7 @@ export type Mansion = {
 	FuseBox: CFrame,
 	Exit: CFrame,
 	Lamps: { BasePart },
+	Doors: { BasePart },
 }
 
 local M = Config.Mansion
@@ -44,7 +47,12 @@ local ROOM_STYLE: { [string]: { floor: Enum.Material, color: Color3 } } = {
 	["Capilla"] = { floor = Enum.Material.Slate, color = Color3.fromRGB(70, 70, 75) },
 	["Invernadero"] = { floor = Enum.Material.CeramicTiles, color = Color3.fromRGB(70, 90, 70) },
 	["Sala de música"] = { floor = Enum.Material.WoodPlanks, color = Color3.fromRGB(75, 55, 40) },
+	["Baño"] = { floor = Enum.Material.CeramicTiles, color = Color3.fromRGB(150, 155, 150) },
+	["Garaje"] = { floor = Enum.Material.Concrete, color = Color3.fromRGB(85, 85, 82) },
 }
+
+-- Radio del círculo que cubre lo que barre una hoja de puerta al abrirse hacia un lado.
+local DOOR_SWEEP_R = 5.6
 
 local WALL_COLOR = Color3.fromRGB(96, 92, 88)
 local CEILING_COLOR = Color3.fromRGB(40, 38, 36)
@@ -228,11 +236,13 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 	local lamps: { BasePart } = {}
 	for _, room in layout.rooms do
 		for _, cell in room.cells do
-			local lamp = Decor.Chandelier(lampsFolder, cellCenter(cell) + Vector3.new(0, H, 0))
+			local style = if RoomThemes.BulbLamp[room.kind] then "Bulb" else nil
+			local lamp = Decor.Chandelier(lampsFolder, cellCenter(cell) + Vector3.new(0, H, 0), style)
+			-- Casi apagadas hasta que vuelve la luz (ObjectiveService las sube al restaurarla).
 			local light = Instance.new("PointLight")
 			light.Color = Color3.fromRGB(255, 190, 130)
-			light.Range = 24
-			light.Brightness = 0.6
+			light.Range = Config.Objectives.LampRangePowerOff
+			light.Brightness = Config.Objectives.LampBrightnessPowerOff
 			light.Shadows = true
 			light.Parent = lamp
 			lamp:SetAttribute("Flicker", rng.float() < 0.35)
@@ -294,6 +304,136 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		reserve(fuseRoom.cells[1], pos, 4)
 	end
 
+	-- Puertas entre salas. Se reserva el barrido de la hoja en las dos celdas para que no
+	-- haya muebles que la bloqueen.
+	local doorsFolder = Instance.new("Folder")
+	doorsFolder.Name = "Doors"
+	doorsFolder.Parent = model
+	local doorPanels: { BasePart } = {}
+	for _, door in layout.doors do
+		local d: Cell = { x = door.cellB.x - door.cellA.x, y = door.cellB.y - door.cellA.y }
+		local dv = dirVector(d)
+		local center = cellCenter(door.cellA) + dv * (CS / 2)
+		local rot = if d.y ~= 0 then CFrame.identity else CFrame.Angles(0, math.pi / 2, 0)
+		local closed = CFrame.new(center + Vector3.new(0, M.DoorHeight / 2 - 0.05, 0)) * rot
+		local width = M.DoorWidth - 0.2
+		-- La mitad de las puertas empiezan abiertas hacia un lado al azar.
+		local angle = if rng.float() < 0.5 then Doors.OpenAngleFor(if rng.float() < 0.5 then 1 else -1) else 0
+		table.insert(doorPanels, Doors.Build(doorsFolder, closed, width, M.DoorHeight - 0.15, angle))
+		-- El barrido de la hoja (bisagra en local -X, 100°) cabe en este círculo a cada lado.
+		local along = closed.RightVector * -0.8
+		reserve(door.cellA, center + along - dv * 3.1, DOOR_SWEEP_R)
+		reserve(door.cellB, center + along + dv * 3.1, DOOR_SWEEP_R)
+	end
+
+	-- Muebles propios de cada tipo de sala, contra una pared lisa libre que no sea la de la
+	-- caja de fusibles. Las paredes usadas no llevan cuadro.
+	local furniture = Instance.new("Folder")
+	furniture.Name = "Furniture"
+	furniture.Parent = model
+	local usedWalls: { [string]: boolean } = {}
+	local function wallKey(cell: Cell, d: Cell): string
+		return cell.x .. "," .. cell.y .. ":" .. d.x .. "," .. d.y
+	end
+	local function wallFrame(cell: Cell, d: Cell): CFrame
+		local dv = dirVector(d)
+		local p = cellCenter(cell) + dv * (CS / 2 - T / 2)
+		return CFrame.lookAt(p, p - dv)
+	end
+	local function freeWalls(room: MansionLayout.Room, cell: Cell, exteriorOnly: boolean): { Cell }
+		local list: { Cell } = {}
+		for _, d in DIRS do
+			local nx, ny = cell.x + d.x, cell.y + d.y
+			local neighbor = roomAt(nx, ny)
+			local wallCenter = cellCenter(cell) + dirVector(d) * (CS / 2)
+			local nearFuseBox = ((wallCenter - (fuseBoxCf :: CFrame).Position) * Vector3.new(1, 0, 1)).Magnitude < 6
+			if
+				neighbor ~= room.id
+				and not doorEdges[edgeKey(cell, { x = nx, y = ny })]
+				and not usedWalls[wallKey(cell, d)]
+				and not nearFuseBox
+				and (not exteriorOnly or neighbor == nil)
+			then
+				table.insert(list, d)
+			end
+		end
+		return list
+	end
+	for _, room in layout.rooms do
+		if room.id == layout.foyer then
+			continue
+		end
+		local cells = table.clone(room.cells)
+		for i = #cells, 2, -1 do
+			local j = rng.int(1, i)
+			cells[i], cells[j] = cells[j], cells[i]
+		end
+		local wallCell: Cell? = nil
+		local wallDir: Cell? = nil
+		if RoomThemes.NeedsWall[room.kind] then
+			for _, cell in cells do
+				local walls = freeWalls(room, cell, false)
+				if #walls > 0 then
+					wallCell, wallDir = cell, walls[rng.int(1, #walls)]
+					break
+				end
+			end
+		end
+		local mainCell = wallCell or cells[1]
+		local ctx: RoomThemes.Context = {
+			wall = if wallCell and wallDir then wallFrame(wallCell, wallDir) else nil,
+			center = CFrame.new(cellCenter(mainCell)) * CFrame.Angles(0, rng.int(0, 3) * math.pi / 2, 0),
+		}
+		local exteriorCell: Cell? = nil
+		local exteriorDir: Cell? = nil
+		if room.kind == MansionLayout.GarageKind then
+			if wallCell and wallDir then
+				usedWalls[wallKey(wallCell, wallDir)] = true
+			end
+			for _, cell in cells do
+				local walls = freeWalls(room, cell, true)
+				if #walls > 0 then
+					exteriorCell, exteriorDir = cell, walls[rng.int(1, #walls)]
+					ctx.exterior = wallFrame(cell, exteriorDir :: Cell)
+					break
+				end
+			end
+		end
+		local key = MansionLayout.Index(w, mainCell.x, mainCell.y)
+		reserved[key] = reserved[key] or {}
+		local circles = reserved[key]
+		-- Las piezas de un tema ya están pensadas para no chocar entre sí: solo se comprueban
+		-- contra lo reservado antes (spawns, objetivos, puertas).
+		local before = table.clone(circles)
+		local placedAny = false
+		for _, piece in RoomThemes.Plan(room.kind, ctx) do
+			local free = true
+			for _, c in piece.circles do
+				if overlaps(before, c.pos, c.r) then
+					free = false
+					break
+				end
+			end
+			if free then
+				if piece.build then
+					piece.build(furniture)
+				elseif piece.prop and piece.propCf then
+					placeProp(props, piece.prop, piece.propCf)
+				end
+				for _, c in piece.circles do
+					table.insert(circles, c)
+				end
+				placedAny = true
+			end
+		end
+		if placedAny and wallCell and wallDir then
+			usedWalls[wallKey(wallCell, wallDir)] = true
+		end
+		if exteriorCell and exteriorDir then
+			usedWalls[wallKey(exteriorCell, exteriorDir)] = true
+		end
+	end
+
 	-- Cuadros en las paredes lisas (sin puerta), a media altura y lejos de la caja de fusibles.
 	local decor = Instance.new("Folder")
 	decor.Name = "Decor"
@@ -303,7 +443,12 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		for _, cell in room.cells do
 			for _, d in DIRS do
 				local nx, ny = cell.x + d.x, cell.y + d.y
-				if roomAt(nx, ny) ~= room.id and not doorEdges[edgeKey(cell, { x = nx, y = ny })] and rng.float() < 0.5 then
+				if
+					roomAt(nx, ny) ~= room.id
+					and not doorEdges[edgeKey(cell, { x = nx, y = ny })]
+					and not usedWalls[wallKey(cell, d)]
+					and rng.float() < 0.5
+				then
 					local dv = dirVector(d)
 					local pos = cellCenter(cell) + dv * (CS / 2 - T / 2 - 0.2) + Vector3.new(0, 7.6, 0)
 					if (pos - (fuseBoxCf :: CFrame).Position).Magnitude > 8 then
@@ -315,14 +460,46 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		end
 	end
 
-	-- Puntos para fusibles: centro de cada sala que no sea el vestíbulo.
+	-- Puntos para las cajas de fusibles: uno por sala (menos el vestíbulo), en un hueco libre
+	-- de muebles; hace falta sitio para una caja y otra al lado.
 	local fuseSpawns: { Vector3 } = {}
+	local FUSE_R = 5.5
+	local fuseLimit = math.floor(CS / 2 - T / 2 - 7.5)
 	for _, room in layout.rooms do
 		if room.id ~= layout.foyer then
-			local cell = room.cells[rng.int(1, #room.cells)]
-			local pos = cellCenter(cell) + Vector3.new(rng.int(-3, 3), 0.5, rng.int(-3, 3))
+			local chosen: Vector3? = nil
+			local chosenCell = room.cells[1]
+			for _ = 1, 30 do
+				local cell = room.cells[rng.int(1, #room.cells)]
+				local pos = cellCenter(cell) + Vector3.new(rng.int(-fuseLimit, fuseLimit), 0.5, rng.int(-fuseLimit, fuseLimit))
+				if not overlaps(reserved[MansionLayout.Index(w, cell.x, cell.y)] or {}, pos, FUSE_R) then
+					chosen, chosenCell = pos, cell
+					break
+				end
+			end
+			if not chosen then
+				-- Sala abarrotada: el punto de la rejilla con más hueco alrededor.
+				local bestClear = -math.huge
+				for _, cell in room.cells do
+					local circles: { Circle } = reserved[MansionLayout.Index(w, cell.x, cell.y)] or {}
+					for gx = -fuseLimit, fuseLimit, 2 do
+						for gz = -fuseLimit, fuseLimit, 2 do
+							local pos = cellCenter(cell) + Vector3.new(gx, 0.5, gz)
+							local clear = math.huge
+							for _, c in circles do
+								local dx, dz = c.pos.X - pos.X, c.pos.Z - pos.Z
+								clear = math.min(clear, math.sqrt(dx * dx + dz * dz) - c.r)
+							end
+							if clear > bestClear then
+								bestClear, chosen, chosenCell = clear, pos, cell
+							end
+						end
+					end
+				end
+			end
+			local pos = chosen :: Vector3
 			table.insert(fuseSpawns, pos)
-			reserve(cell, pos, 5.5) -- sitio para una caja y otra al lado
+			reserve(chosenCell, pos, FUSE_R)
 		end
 	end
 
@@ -406,6 +583,7 @@ function MansionBuilder.Build(layout: Layout, rng: Rng): Mansion
 		FuseBox = fuseBoxCf :: CFrame,
 		Exit = exitCf,
 		Lamps = lamps,
+		Doors = doorPanels,
 	}
 end
 

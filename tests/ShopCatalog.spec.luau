@@ -50,7 +50,14 @@ for _, item in ShopCatalog.Items do
 	seen[item.id] = true
 	check(item.price > 0, "precio inválido " .. item.id)
 	if item.category == "Flashlight" then
-		check(ShopCatalog.Flashlights[item.id] ~= nil, "linterna sin variante " .. item.id)
+		local variant = ShopCatalog.Flashlights[item.id]
+		check(variant ~= nil, "linterna sin variante " .. item.id)
+		-- El texto de la tienda tiene que decir el ángulo y el alcance de verdad.
+		if variant then
+			local angle = tonumber(string.match(item.description, "%((%d+)°%)"))
+			local range = tonumber(string.match(item.description, "%((%d+) studs%)"))
+			check(angle == variant.angle and range == variant.range, "la descripción no cuadra con la variante " .. item.id)
+		end
 	end
 end
 

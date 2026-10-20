@@ -59,20 +59,30 @@ local DIRS: { Cell } = {
 	{ x = 0, y = -1 },
 }
 
+-- Tipos de sala por orden de prioridad: siempre hay salón, dormitorio y baño; el resto
+-- se reparte según cuántas salas tenga la mansión. El garaje (con la caja de fusibles) y
+-- el vestíbulo se asignan aparte.
 local ROOM_KINDS = {
-	"Biblioteca",
-	"Comedor",
 	"Salón",
 	"Dormitorio",
+	"Baño",
 	"Cocina",
+	"Dormitorio",
+	"Comedor",
+	"Baño",
+	"Biblioteca",
+	"Dormitorio",
 	"Estudio",
+	"Sala de música",
 	"Galería",
 	"Capilla",
 	"Invernadero",
-	"Sala de música",
 }
 
 local MansionLayout = {}
+
+MansionLayout.GarageKind = "Garaje"
+MansionLayout.RoomKinds = ROOM_KINDS
 
 local function index(width: number, x: number, y: number): number
 	return y * width + x
@@ -151,17 +161,21 @@ local function assignSpecialRooms(layout: Layout, rng: Rng)
 	end
 	layout.fuseBoxRoom = if #candidates > 0 then candidates[rng.int(1, #candidates)] else layout.anomalyRoom
 
-	-- Tipos de sala (solo estética y elección de muebles).
-	local kinds = table.clone(ROOM_KINDS)
-	shuffle(kinds, rng)
-	local k = 1
+	-- Tipos de sala (estética y muebles): vestíbulo, garaje con la caja de fusibles y el
+	-- resto por prioridad en salas al azar, para que siempre haya salón, dormitorio y baño.
+	local others: { Room } = {}
 	for _, room in layout.rooms do
 		if room.id == layout.foyer then
 			room.kind = "Vestíbulo"
+		elseif room.id == layout.fuseBoxRoom then
+			room.kind = MansionLayout.GarageKind
 		else
-			room.kind = kinds[((k - 1) % #kinds) + 1]
-			k += 1
+			table.insert(others, room)
 		end
+	end
+	shuffle(others, rng)
+	for k, room in others do
+		room.kind = ROOM_KINDS[((k - 1) % #ROOM_KINDS) + 1]
 	end
 end
 
@@ -408,6 +422,11 @@ function MansionLayout.Validate(layout: Layout, params: Params): (boolean, strin
 	end
 	if layout.fuseBoxRoom == layout.foyer then
 		return false, "la caja de fusibles está en el vestíbulo"
+	end
+	for _, room in layout.rooms do
+		if (room.kind == MansionLayout.GarageKind) ~= (room.id == layout.fuseBoxRoom) then
+			return false, "el garaje y la caja de fusibles no coinciden"
+		end
 	end
 	return true, nil
 end
