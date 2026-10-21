@@ -234,14 +234,14 @@ ShopCatalog.Monetization = {
 	Products = {
 		{
 			key = "Revive",
-			id = 0,
+			id = 3720706501,
 			name = "Revive Token",
 			description = "Siendo fantasma, R para volver al vestíbulo. Máximo 1 por partida.",
 			robux = 25,
 		},
-		{ key = "Coins500", id = 0, name = "Bolsa de 500 monedas", description = "Para la tienda y el cofre.", robux = 49, coins = 500 },
-		{ key = "Coins1500", id = 0, name = "Saco de 1.500 monedas", description = "Para la tienda y el cofre.", robux = 129, coins = 1500 },
-		{ key = "Coins4000", id = 0, name = "Cofre de 4.000 monedas", description = "Para la tienda y el cofre.", robux = 299, coins = 4000 },
+		{ key = "Coins500", id = 3720707199, name = "Bolsa de 500 monedas", description = "Para la tienda y el cofre.", robux = 49, coins = 500 },
+		{ key = "Coins1500", id = 3720707324, name = "Saco de 1.500 monedas", description = "Para la tienda y el cofre.", robux = 129, coins = 1500 },
+		{ key = "Coins4000", id = 3720707431, name = "Cofre de 4.000 monedas", description = "Para la tienda y el cofre.", robux = 299, coins = 4000 },
 	} :: { Product },
 	VipCoinBonus = 0.2,
 }
