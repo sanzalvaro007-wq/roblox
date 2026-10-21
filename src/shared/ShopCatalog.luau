@@ -210,21 +210,21 @@ ShopCatalog.Monetization = {
 	GamePasses = {
 		{
 			key = "VIP",
-			id = 0,
+			id = 2044778770,
 			name = "VIP",
 			description = "+20% de monedas al acabar cada ronda y etiqueta [VIP] en el chat.",
 			robux = 149,
 		},
 		{
 			key = "Founder",
-			id = 0,
+			id = 2044958759,
 			name = "Pack Fundador",
 			description = "Linterna dorada y ojos de oro exclusivos para la Anomalía.",
 			robux = 199,
 		},
 		{
 			key = "UVPro",
-			id = 0,
+			id = 2045396754,
 			name = "Luz UV Pro",
 			description = "La UV revela huellas desde más lejos. Sigue gastando batería.",
 			robux = 99,
