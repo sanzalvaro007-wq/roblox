@@ -33,4 +33,4 @@ for _, name in ORDER do
 	end
 end
 
-print("[Escape the Monster] cliente iniciado")
+print("[Slenderman.exe] cliente iniciado")

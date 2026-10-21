@@ -1,5 +1,5 @@
 --!strict
--- HUD de Escape the Monster. Lee atributos replicados (estado de ronda, cordura, batería...)
+-- HUD de Slenderman.exe. Lee atributos replicados (estado de ronda, cordura, batería...)
 -- y muestra avisos del servidor. No decide nada: solo pinta.
 
 local Players = game:GetService("Players")

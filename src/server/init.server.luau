@@ -45,4 +45,4 @@ for _, name in ORDER do
 	end
 end
 
-print("[Escape the Monster] servidor iniciado")
+print("[Slenderman.exe] servidor iniciado")
