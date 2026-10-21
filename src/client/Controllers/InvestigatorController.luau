@@ -242,6 +242,7 @@ end
 local AURA_RANGE = 9
 local FILL_REACH = 24
 local MAX_LIGHT_RANGE = 60 -- límite de Roblox
+local WALL_BEAM_RANGE = 6
 -- Al pegarte a una pared el foco acaba casi dentro de la cabeza: tu propio cuerpo (o el
 -- sombrero) proyectaba sombra y tapaba el haz. Localmente tu personaje no hace sombra.
 local shadowlessCharacter: Model? = nil
@@ -339,11 +340,14 @@ local function updateLocalFlashlight()
 	local camera = workspace.CurrentCamera
 	local look = camera.CFrame.LookVector
 
+	-- Los rayos ignoran tu cuerpo y a los fantasmas (invisibles para ti, pero los rayos los tocan).
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local ignore: { Instance } = { part }
-	if character then
-		table.insert(ignore, character)
+	for _, other in Players:GetPlayers() do
+		if other.Character and (other == player or other:GetAttribute("Ghost") == true) then
+			table.insert(ignore, other.Character)
+		end
 	end
 	params.FilterDescendantsInstances = ignore
 
@@ -361,9 +365,11 @@ local function updateLocalFlashlight()
 	if beam then
 		beam.Enabled = on
 		beam.Angle = angle
-		beam.Range = range
 		-- Pegado a algo, las sombras del foco solo dan problemas: se quitan hasta separarte.
+		-- Sin sombras la luz atraviesa paredes, así que de paso se acorta para no alumbrar
+		-- la sala de al lado; lo que tienes delante ya lo ilumina la luz cercana.
 		beam.Shadows = wall == nil
+		beam.Range = if wall then WALL_BEAM_RANGE else range
 	end
 	local near = part:FindFirstChild("Near") :: PointLight?
 	if near then

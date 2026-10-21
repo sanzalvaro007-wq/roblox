@@ -57,6 +57,7 @@ for _, item in ShopCatalog.Items do
 			local angle = tonumber(string.match(item.description, "%((%d+)°%)"))
 			local range = tonumber(string.match(item.description, "%((%d+) studs%)"))
 			check(angle == variant.angle and range == variant.range, "la descripción no cuadra con la variante " .. item.id)
+			check(variant.range <= 60, "Roblox no deja luces de más de 60 studs: " .. item.id)
 		end
 	end
 end

@@ -65,7 +65,7 @@ function ToolService.Setup(player: Player)
 		local light = Instance.new("SpotLight")
 		light.Name = "Flashlight"
 		light.Angle = variant.angle
-		light.Range = math.min(variant.range * 2, 60) -- Roblox no pasa de 60 studs
+		light.Range = variant.range
 		light.Brightness = 2.6
 		light.Color = Color3.fromRGB(255, 240, 210)
 		light.Shadows = true
