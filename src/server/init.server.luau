@@ -45,4 +45,4 @@ for _, name in ORDER do
 	end
 end
 
-print("[Mimic Manor] servidor iniciado")
+print("[Escape the Monster] servidor iniciado")
