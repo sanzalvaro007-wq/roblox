@@ -1,4 +1,4 @@
-"""Renderiza el icono y las miniaturas de Mimic Manor con los muebles de mimic_props.py.
+"""Renderiza el icono y las miniaturas de Escape the Monster con los muebles de mimic_props.py.
 
 Uso (con `pip install bpy`, Python 3.13):
     python tools/blender/key_art.py assets/marketing/renders [icon|thumb1|thumb2|thumb3] [--preview]

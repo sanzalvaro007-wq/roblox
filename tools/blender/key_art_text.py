@@ -23,6 +23,8 @@ BONE = (238, 226, 198)
 EYE = (255, 200, 40)
 INK = (12, 8, 6)
 
+TITLE = "ESCAPE THE MONSTER"
+
 # id del render -> lemas (inglés / español)
 TAGLINES = {
     "thumb1": ("WHICH ONE IS ALIVE?", "¿CUÁL ESTÁ VIVO?"),
@@ -64,11 +66,20 @@ def vignette(img, strength=0.55):
     return out
 
 
+def fit(kind, size, text, max_w):
+    """Fuente del tamaño pedido, o más pequeña si el texto no cabe en max_w."""
+    fnt = font(kind, size)
+    while size > 10 and fnt.getlength(text) > max_w:
+        size -= 2
+        fnt = font(kind, size)
+    return fnt
+
+
 def make_icon(src, dst):
     img = vignette(Image.open(src).convert("RGBA"), 0.5)
     w, h = img.size
-    glow_text(img, (w / 2, h * 0.115), "MIMIC", font("title", int(h * 0.16)), BONE, (200, 120, 20), h * 0.02, int(h * 0.008))
-    glow_text(img, (w / 2, h * 0.255), "MANOR", font("title", int(h * 0.115)), BONE, (200, 120, 20), h * 0.02, int(h * 0.007))
+    glow_text(img, (w / 2, h * 0.115), "ESCAPE", fit("title", int(h * 0.16), "ESCAPE", w * 0.9), BONE, (200, 120, 20), h * 0.02, int(h * 0.008))
+    glow_text(img, (w / 2, h * 0.255), "THE MONSTER", fit("title", int(h * 0.115), "THE MONSTER", w * 0.92), BONE, (200, 120, 20), h * 0.02, int(h * 0.007))
     img.convert("RGB").resize((512, 512), Image.LANCZOS).save(dst, optimize=True)
 
 
@@ -80,7 +91,7 @@ def make_thumb(src, dst, tagline):
     for y in range(h):
         band.putpixel((0, y), int(170 * max(0.0, 1 - y / (h * 0.42)) ** 1.6))
     img.alpha_composite(Image.merge("RGBA", [Image.new("L", (w, h), 0)] * 3 + [band.resize((w, h))]))
-    glow_text(img, (w / 2, h * 0.12), "MIMIC MANOR", font("title", int(h * 0.12)), BONE, (200, 120, 20), h * 0.015, int(h * 0.006))
+    glow_text(img, (w / 2, h * 0.12), TITLE, fit("title", int(h * 0.12), TITLE, w * 0.9), BONE, (200, 120, 20), h * 0.015, int(h * 0.006))
     glow_text(img, (w / 2, h * 0.255), tagline, font("tag", int(h * 0.09)), EYE, (255, 120, 0), h * 0.012, int(h * 0.005))
     img.convert("RGB").save(dst, optimize=True)
 

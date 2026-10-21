@@ -46,7 +46,7 @@ local TEXTS: { [string]: string } = {
 		"Vigila la caja de fusibles: cuando la luz vuelve, pueden escapar.",
 	}, "\n"),
 	Lobby = table.concat({
-		"MIMIC MANOR",
+		"ESCAPE THE MONSTER",
 		"",
 		"Una Anomalía que se disfraza de mueble contra Investigadores que intentan escapar.",
 		"La ronda empieza sola cuando hay jugadores suficientes.",

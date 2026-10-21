@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 
+-- Nombre antiguo del juego (Mimic Manor): no cambiarlo o se pierden las partidas guardadas
 local STORE_NAME = "MimicManor_v1"
 local LOCK_TIMEOUT = 600 -- segundos: un bloqueo más viejo se considera abandonado
 local AUTOSAVE_INTERVAL = 120

@@ -33,4 +33,4 @@ for _, name in ORDER do
 	end
 end
 
-print("[Mimic Manor] cliente iniciado")
+print("[Escape the Monster] cliente iniciado")

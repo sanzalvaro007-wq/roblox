@@ -1,4 +1,4 @@
-# Mimic Manor
+# Escape the Monster
 
 Juego de terror asimétrico y escondite para Roblox: una Anomalía que se transforma en muebles contra Investigadores que intentan escapar de una mansión victoriana. Clasificación objetivo: 13+.
 
