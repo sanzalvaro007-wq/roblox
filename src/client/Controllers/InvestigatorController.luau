@@ -322,9 +322,11 @@ local function updateLocalFlashlight()
 	local head = if character then character:FindFirstChild("Head") else nil
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
 	local angle, range = 60, 50
+	local color: Color3? = nil
 	if serverLight and serverLight:IsA("SpotLight") then
 		serverLight.Brightness = if on then 0 else 2.6
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
+		color = serverLight.Color -- color cosmético de la tienda
 	end
 	range = math.min(range, MAX_LIGHT_RANGE)
 	if not inPlay then
@@ -341,6 +343,14 @@ local function updateLocalFlashlight()
 		localLightPart = makeLocalLight()
 	end
 	local part = localLightPart :: Part
+	if color and part:GetAttribute("Tint") ~= color then
+		part:SetAttribute("Tint", color)
+		for _, light in part:GetDescendants() do
+			if light:IsA("Light") and light.Name ~= "Aura" then
+				light.Color = color
+			end
+		end
+	end
 	local camera = workspace.CurrentCamera
 	local look = camera.CFrame.LookVector
 

@@ -1,11 +1,12 @@
 --!strict
--- Tienda del lobby (tecla B o botón "Tienda"): mejoras, consumibles, gacha y Robux.
+-- Tienda del lobby (tecla B o botón "Tienda"): mejoras, consumibles, aspecto, gacha y Robux.
 -- Las probabilidades del gacha se muestran SIEMPRE antes de tirar.
 
 local ContextActionService = game:GetService("ContextActionService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Enums = require(Shared:WaitForChild("Enums"))
@@ -130,6 +131,43 @@ local function render()
 		place(b)
 	end
 
+	section("Aspecto (solo cambia el color)", nextOrder())
+	for _, item in ShopCatalog.Cosmetics do
+		local slot = item.slot :: string
+		local owned = if item.exclusive then player:GetAttribute(item.exclusive) == true else ProfileController.Owns(item.id)
+		local title = if item.exclusive then item.name else string.format("%s · %d", item.name, item.price)
+		local r = row(nextOrder(), title, item.description)
+		local rgb = item.rgb or { 255, 255, 255 }
+		make("Frame", {
+			BackgroundColor3 = Color3.fromRGB(rgb[1], rgb[2], rgb[3]),
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -138, 0.5, 0),
+			Size = UDim2.fromOffset(22, 22),
+			Parent = r,
+		}, { make("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+		local b: TextButton
+		if owned then
+			local equipped = data.equipped[slot] == item.id
+			b = button(if equipped then "Quitar" else "Equipar", Color3.fromRGB(40, 60, 45), r, function()
+				Remotes.Event("ShopEquip"):FireServer(slot, if equipped then "Default" else item.id)
+			end)
+		elseif item.exclusive then
+			local pass = ShopCatalog.Pass(item.exclusive)
+			b = button("Gamepass", Color3.fromRGB(30, 60, 90), r, function()
+				if pass and pass.id ~= 0 then
+					MarketplaceService:PromptGamePassPurchase(player, pass.id)
+				else
+					UIController.Toast("Aún no está a la venta", "info")
+				end
+			end)
+		else
+			b = button("Comprar", Color3.fromRGB(70, 50, 30), r, function()
+				Remotes.Event("ShopPurchase"):FireServer(item.id)
+			end)
+		end
+		place(b)
+	end
+
 	local gacha = ShopCatalog.Gacha
 	section(string.format("%s · %d monedas", gacha.name, gacha.price), nextOrder())
 	local odds = ShopCatalog.GachaOdds()
@@ -149,28 +187,41 @@ local function render()
 		Remotes.Event("GachaRoll"):FireServer()
 	end))
 
+	-- Robux: solo aparece lo que ya tiene id en el Creator Dashboard.
 	local M = ShopCatalog.Monetization
-	if M.UVProGamepassId ~= 0 or M.ReviveProductId ~= 0 then
-		section("Robux", nextOrder())
-		if M.UVProGamepassId ~= 0 then
-			local uv = row(nextOrder(), "Luz UV Pro (gamepass)", "La UV revela huellas desde más lejos. Sigue gastando batería.")
-			if player:GetAttribute("UVPro") == true then
-				place(button("Tuyo", Color3.fromRGB(40, 40, 40), uv, function() end))
-			else
-				place(button("Comprar", Color3.fromRGB(30, 60, 90), uv, function()
-					MarketplaceService:PromptGamePassPurchase(player, M.UVProGamepassId)
-				end))
-			end
+	local robuxRows: { () -> () } = {}
+	for _, pass in M.GamePasses do
+		if pass.id ~= 0 then
+			table.insert(robuxRows, function()
+				local r = row(nextOrder(), pass.name .. " (gamepass)", pass.description)
+				if player:GetAttribute(pass.key) == true then
+					place(button("Tuyo", Color3.fromRGB(40, 40, 40), r, function() end))
+				else
+					place(button("Comprar", Color3.fromRGB(30, 60, 90), r, function()
+						MarketplaceService:PromptGamePassPurchase(player, pass.id)
+					end))
+				end
+			end)
 		end
-		if M.ReviveProductId ~= 0 then
-			local rv = row(
-				nextOrder(),
-				string.format("Revive Token (tienes %d)", ProfileController.Count("Revive")),
-				"Siendo fantasma, R para volver al vestíbulo. Máximo 1 por partida."
-			)
-			place(button("Comprar", Color3.fromRGB(30, 60, 90), rv, function()
-				MarketplaceService:PromptProductPurchase(player, M.ReviveProductId)
-			end))
+	end
+	for _, product in M.Products do
+		if product.id ~= 0 then
+			table.insert(robuxRows, function()
+				local title = product.name
+				if product.key == "Revive" then
+					title = string.format("%s (tienes %d)", product.name, ProfileController.Count("Revive"))
+				end
+				local r = row(nextOrder(), title, product.description)
+				place(button("Comprar", Color3.fromRGB(30, 60, 90), r, function()
+					MarketplaceService:PromptProductPurchase(player, product.id)
+				end))
+			end)
+		end
+	end
+	if #robuxRows > 0 then
+		section("Robux", nextOrder())
+		for _, add in robuxRows do
+			add()
 		end
 	end
 
@@ -268,7 +319,20 @@ function ShopController.Start()
 	ProfileController.Changed:Connect(refresh)
 	ReplicatedStorage:GetAttributeChangedSignal("RoundState"):Connect(refresh)
 	player:GetAttributeChangedSignal("Role"):Connect(refresh)
-	player:GetAttributeChangedSignal("UVPro"):Connect(refresh)
+	for _, pass in ShopCatalog.Monetization.GamePasses do
+		player:GetAttributeChangedSignal(pass.key):Connect(refresh)
+	end
+	-- Etiqueta [VIP] en el chat para quien tiene el gamepass.
+	TextChatService.OnIncomingMessage = function(message: TextChatMessage): any
+		local source = message.TextSource
+		local sender = if source then Players:GetPlayerByUserId(source.UserId) else nil
+		if sender and sender:GetAttribute("VIP") == true then
+			local props = Instance.new("TextChatMessageProperties")
+			props.PrefixText = '<font color="#F0C85A">[VIP]</font> ' .. message.PrefixText
+			return props
+		end
+		return nil
+	end
 	refresh()
 
 	Remotes.Event("ShopResult").OnClientEvent:Connect(function(ok, message)

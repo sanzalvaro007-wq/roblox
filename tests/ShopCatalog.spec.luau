@@ -62,8 +62,41 @@ for _, item in ShopCatalog.Items do
 	end
 end
 
--- Las monedas no se venden: el gacha no es un "paid random item".
-check(ShopCatalog.Monetization.CoinsPurchasable == false, "si se venden monedas, revisar políticas del gacha")
+-- Cosméticos: ids únicos, hueco válido, color válido y gamepass exclusivo existente.
+for _, item in ShopCatalog.Cosmetics do
+	check(not seen[item.id], "id repetido " .. item.id)
+	seen[item.id] = true
+	check(ShopCatalog.ById[item.id] == item, "cosmético sin índice " .. item.id)
+	check(item.slot ~= nil and ShopCatalog.DefaultRgb[item.slot :: string] ~= nil, "hueco cosmético inválido " .. item.id)
+	check(item.slot ~= nil and table.find(ShopCatalog.Slots, item.slot) ~= nil, "hueco no equipable " .. item.id)
+	local rgb = item.rgb
+	check(rgb ~= nil and #rgb == 3, "color inválido " .. item.id)
+	for _, c in rgb or {} do
+		check(c >= 0 and c <= 255, "componente de color fuera de rango " .. item.id)
+	end
+	if item.exclusive then
+		check(item.price == 0, "un exclusivo no se vende con monedas " .. item.id)
+		check(ShopCatalog.Pass(item.exclusive) ~= nil, "exclusivo de un gamepass que no existe " .. item.id)
+	else
+		check(item.price > 0, "precio inválido " .. item.id)
+	end
+end
+
+-- Robux: claves únicas, precios recomendados y bolsas con monedas.
+local keys = {}
+for _, pass in ShopCatalog.Monetization.GamePasses do
+	check(not keys[pass.key], "clave repetida " .. pass.key)
+	keys[pass.key] = true
+	check(pass.robux > 0, "precio en Robux inválido " .. pass.key)
+end
+for _, product in ShopCatalog.Monetization.Products do
+	check(not keys[product.key], "clave repetida " .. product.key)
+	keys[product.key] = true
+	check(product.robux > 0, "precio en Robux inválido " .. product.key)
+	check(product.key == "Revive" or (product.coins or 0) > 0, "producto sin efecto " .. product.key)
+end
+check(ShopCatalog.ProductById(0) == nil, "el id 0 no puede ser un producto")
+
 
 if failures > 0 then
 	error(failures .. " tests fallidos")

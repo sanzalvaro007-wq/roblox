@@ -20,9 +20,9 @@ local function reply(player: Player, ok: boolean, message: string)
 	Remotes.Event("ShopResult"):FireClient(player, ok, message)
 end
 
--- Solo hace falta si las monedas se pudieran comprar con Robux (hoy no).
+-- Solo hace falta si las monedas se pueden comprar con Robux (alguna bolsa con id).
 local function randomItemsBlocked(player: Player): boolean
-	if not ShopCatalog.Monetization.CoinsPurchasable then
+	if not ShopCatalog.CoinsPurchasable() then
 		return false
 	end
 	local ok, info = pcall(function()
@@ -36,6 +36,11 @@ local function purchase(player: Player, itemId: string)
 	local item = ShopCatalog.ById[itemId]
 	local data = DataService.Get(player)
 	if not item or not data then
+		return
+	end
+	if item.exclusive then
+		local pass = ShopCatalog.Pass(item.exclusive)
+		reply(player, false, "Solo con el gamepass " .. (if pass then pass.name else item.exclusive))
 		return
 	end
 	if not item.consumable and data.owned[itemId] then
@@ -58,17 +63,25 @@ local function purchase(player: Player, itemId: string)
 	reply(player, true, "Has comprado: " .. item.name)
 end
 
+-- Lo tiene comprado con monedas o, si es exclusivo, tiene su gamepass.
+local function hasItem(player: Player, item: ShopCatalog.Item): boolean
+	if item.exclusive then
+		return player:GetAttribute(item.exclusive) == true
+	end
+	return DataService.Owns(player, item.id)
+end
+
 local function equip(player: Player, slot: string, itemId: string)
 	local data = DataService.Get(player)
 	if not data then
 		return
 	end
-	if slot ~= "Flashlight" and slot ~= "EMF" then
+	if not table.find(ShopCatalog.Slots, slot) then
 		return
 	end
 	if itemId ~= "Default" then
 		local item = ShopCatalog.ById[itemId]
-		if not item or item.slot ~= slot or not data.owned[itemId] then
+		if not item or item.slot ~= slot or not hasItem(player, item) then
 			return
 		end
 	end
@@ -113,6 +126,18 @@ local function roll(player: Player)
 	end
 	DataService.Sync(player)
 	Remotes.Event("GachaResult"):FireClient(player, form, duplicate, if duplicate then gacha.duplicateRefund else 0)
+end
+
+-- Color equipado en un hueco cosmético ("LightColor" o "AnomalyEyes"), como Color3.
+-- Si ya no lo tiene (p. ej. gamepass reembolsado) vuelve al color de serie.
+function ShopService.EquippedColor(player: Player, slot: string): Color3
+	local rgb = ShopCatalog.DefaultRgb[slot] or { 255, 255, 255 }
+	local data = DataService.Get(player)
+	local item = if data then ShopCatalog.ById[data.equipped[slot] or ""] else nil
+	if item and item.slot == slot and item.rgb and hasItem(player, item) then
+		rgb = item.rgb
+	end
+	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
 -- Formas cosméticas: libres las normales; las del gacha, solo si se poseen.
