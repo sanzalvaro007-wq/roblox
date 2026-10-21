@@ -1,7 +1,8 @@
 --!strict
--- Robux: gamepass "Luz UV Pro" y DevProduct "Revive Token" (1 uso por partida).
--- Los ids viven en ShopCatalog.Monetization; con id 0 la opción está desactivada.
--- ProcessReceipt solo devuelve PurchaseGranted cuando el token está GUARDADO.
+-- Robux: gamepasses (VIP, Pack Fundador, Luz UV Pro) y DevProducts (Revive Token y bolsas
+-- de monedas). Los ids viven en ShopCatalog.Monetization; con id 0 la opción está desactivada.
+-- Cada gamepass se refleja en un atributo del jugador con su clave (p. ej. "VIP" = true).
+-- ProcessReceipt solo devuelve PurchaseGranted cuando la compra está GUARDADA.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -22,15 +23,17 @@ local MonetizationService = {}
 
 local revivedThisRound: { [Player]: boolean } = {}
 
-local function checkUvPro(player: Player)
-	if M.UVProGamepassId == 0 then
-		player:SetAttribute("UVPro", false)
-		return
+local function checkPasses(player: Player)
+	for _, pass in M.GamePasses do
+		if pass.id == 0 then
+			player:SetAttribute(pass.key, false)
+			continue
+		end
+		local ok, owns = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id)
+		end)
+		player:SetAttribute(pass.key, ok and owns == true)
 	end
-	local ok, owns = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, M.UVProGamepassId)
-	end)
-	player:SetAttribute("UVPro", ok and owns == true)
 end
 
 local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
@@ -47,21 +50,31 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 	if DataService.HasReceipt(player, receiptId) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
-	if receipt.ProductId == M.ReviveProductId and M.ReviveProductId ~= 0 then
-		data.consumables.Revive = (data.consumables.Revive or 0) + 1
-	else
+	local product = ShopCatalog.ProductById(receipt.ProductId)
+	if not product then
 		warn("[Monetization] producto desconocido", receipt.ProductId)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local coins = product.coins or 0
+	if product.key == "Revive" then
+		data.consumables.Revive = (data.consumables.Revive or 0) + 1
+	else
+		data.coins += coins
 	end
 	DataService.AddReceipt(player, receiptId)
 	if not DataService.SaveNow(player) then
 		-- Deshacer en memoria; se reintentará.
-		data.consumables.Revive -= 1
+		if product.key == "Revive" then
+			data.consumables.Revive -= 1
+		else
+			data.coins -= coins
+		end
 		table.remove(data.receipts, #data.receipts)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	DataService.Sync(player)
-	Remotes.Event("Notify"):FireClient(player, "Revive Token añadido", "success")
+	local message = if product.key == "Revive" then "Revive Token añadido" else string.format("+%d monedas", coins)
+	Remotes.Event("Notify"):FireClient(player, message, "success")
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -93,13 +106,19 @@ end
 
 function MonetizationService.Init()
 	MarketplaceService.ProcessReceipt = processReceipt
-	Players.PlayerAdded:Connect(checkUvPro)
+	Players.PlayerAdded:Connect(checkPasses)
 	for _, player in Players:GetPlayers() do
-		task.spawn(checkUvPro, player)
+		task.spawn(checkPasses, player)
 	end
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
-		if purchased and passId == M.UVProGamepassId then
-			player:SetAttribute("UVPro", true)
+		if not purchased or passId == 0 then
+			return
+		end
+		for _, pass in M.GamePasses do
+			if pass.id == passId then
+				player:SetAttribute(pass.key, true)
+				Remotes.Event("Notify"):FireClient(player, "¡Gracias! Ya tienes " .. pass.name, "success")
+			end
 		end
 	end)
 	Remotes.Event("UseRevive").OnServerEvent:Connect(function(player)

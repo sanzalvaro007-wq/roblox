@@ -10,6 +10,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Enums = require(Shared:WaitForChild("Enums"))
 
+local ShopService = require(script.Parent:WaitForChild("ShopService"))
+
 local CharacterService = {}
 
 CharacterService.Groups = {
@@ -236,13 +238,15 @@ function CharacterService.ApplyAnomalyLook(character: Model)
 	setGroup(character, CharacterService.Groups.Anomaly)
 
 	local head = character:FindFirstChild("Head")
+	local owner = Players:GetPlayerFromCharacter(character)
+	local eyeColor = if owner then ShopService.EquippedColor(owner, "AnomalyEyes") else Color3.fromRGB(255, 30, 30)
 	if head and head:IsA("BasePart") then
 		for _, side in { -1, 1 } do
 			local eye = Instance.new("Part")
 			eye.Name = "Eye"
 			eye.Size = Vector3.new(0.18, 0.12, 0.05)
 			eye.Material = Enum.Material.Neon
-			eye.Color = Color3.fromRGB(255, 30, 30)
+			eye.Color = eyeColor
 			eye.CanCollide = false
 			eye.CanQuery = false
 			eye.Massless = true

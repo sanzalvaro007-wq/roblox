@@ -1,6 +1,7 @@
 --!strict
--- Monedas de Investigación: se ganan jugando (nunca con Robux). Cada premio se apunta
--- en el resumen de la ronda que ve el jugador al final.
+-- Monedas de Investigación: se ganan jugando (y se pueden comprar en bolsas con Robux,
+-- ver MonetizationService). Cada premio se apunta en el resumen de la ronda que ve el
+-- jugador al final. Con el gamepass VIP se suma un bonus sobre lo ganado en la ronda.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -67,6 +68,15 @@ function EconomyService.FinishRound(summary: RoundSummary)
 					EconomyService.Award(player, R.InvestigatorWin, "Victoria del equipo")
 				end
 			end
+		end
+	end
+	for _, player in everyone do
+		if player.Parent and player:GetAttribute("VIP") == true then
+			local earned = 0
+			for _, line in earnings[player] or {} :: { Line } do
+				earned += line.amount
+			end
+			EconomyService.Award(player, math.floor(earned * ShopCatalog.Monetization.VipCoinBonus), "Bonus VIP")
 		end
 	end
 	for _, player in everyone do

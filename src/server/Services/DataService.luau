@@ -47,7 +47,7 @@ local function defaults(): Data
 		version = 1,
 		coins = 0,
 		owned = {},
-		equipped = { Flashlight = "Default", EMF = "Default" },
+		equipped = { Flashlight = "Default", EMF = "Default", LightColor = "Default", AnomalyEyes = "Default" },
 		consumables = { Trap_Bell = 0, Revive = 0 },
 		stats = { rounds = 0, wins = 0, escapes = 0, kills = 0 },
 		receipts = {},

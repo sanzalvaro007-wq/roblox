@@ -18,6 +18,7 @@ local PlayerUtil = require(Util:WaitForChild("PlayerUtil"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local MorphService = require(script.Parent:WaitForChild("MorphService"))
+local ShopService = require(script.Parent:WaitForChild("ShopService"))
 
 local I = Config.Investigator
 
@@ -67,7 +68,7 @@ function ToolService.Setup(player: Player)
 		light.Angle = variant.angle
 		light.Range = variant.range
 		light.Brightness = 2.6
-		light.Color = Color3.fromRGB(255, 240, 210)
+		light.Color = ShopService.EquippedColor(player, "LightColor") -- solo estético
 		light.Shadows = true
 		light.Face = Enum.NormalId.Front
 		light.Enabled = false
