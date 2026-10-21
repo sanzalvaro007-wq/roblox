@@ -345,16 +345,20 @@ def mimic_face(root, center, eye_gap, eye_size, mouth_w, mouth_z, y, grin=True, 
 
 # ---------------------------------------------------------------- Investigador
 
-def investigator(loc, facing_deg, target, coat=(0.09, 0.22, 0.32), hat=True, beam_len=26, power=9000, cones=False):
-    """Personaje de bloques tipo Roblox con linterna apuntando a target."""
+def investigator(loc, facing_deg, target, coat=(0.09, 0.22, 0.32), hat=True, beam_len=26, power=9000, cones=False,
+                 run=0.0):
+    """Personaje de bloques tipo Roblox con linterna apuntando a target.
+    run > 0 lo pone corriendo: piernas abiertas, brazo libre balanceado y cuerpo inclinado."""
     root = empty("Investigator", loc)
-    root.rotation_euler = (0, 0, math.radians(facing_deg))
+    root.rotation_euler = (math.radians(-10 * run), 0, math.radians(facing_deg))
     skin = flat("Skin", (0.78, 0.56, 0.4), 0.6)
     jacket = flat(f"Coat{coat}", coat, 0.75)
     pants = flat("Pants", (0.05, 0.05, 0.07), 0.8)
     brown = flat("Hat", (0.12, 0.07, 0.04), 0.7)
     for sx in (-1, 1):
-        cube(pants, (0.95, 0.95, 2.0), (sx * 0.5, 0, 1.0), 0.06, root)
+        hip = empty("Hip", (sx * 0.5, 0, 2.0), root)
+        hip.rotation_euler = (math.radians(sx * 35 * run), 0, 0)
+        cube(pants, (0.95, 0.95, 2.0), (0, 0, -1.0), 0.06, hip)
     cube(jacket, (2.0, 1.0, 2.0), (0, 0, 3.0), 0.08, root)
     cube(jacket, (2.1, 1.1, 0.25), (0, 0, 2.1), 0.05, root)          # bajo de la gabardina
     cube(skin, (1.15, 1.1, 1.1), (0, 0, 4.6), 0.18, root)
@@ -362,8 +366,12 @@ def investigator(loc, facing_deg, target, coat=(0.09, 0.22, 0.32), hat=True, bea
         cube(brown, (1.9, 1.8, 0.12), (0, 0, 5.18), 0.05, root)
         cube(brown, (1.25, 1.2, 0.6), (0, 0, 5.5), 0.1, root)
         cube(flat("Band", (0.3, 0.08, 0.06), 0.6), (1.27, 1.22, 0.15), (0, 0, 5.28), 0.02, root)
-    # brazo izquierdo colgando
-    cube(jacket, (0.95, 0.95, 2.0), (-1.5, 0, 3.0), 0.06, root)
+    # brazo izquierdo colgando (o balanceándose al correr)
+    left = empty("LeftShoulder", (-1.5, 0, 3.8), root)
+    left.rotation_euler = (math.radians(-50 * run), 0, 0)
+    cube(jacket, (0.95, 0.95, 2.0), (0, 0, -0.8), 0.06, left)
+    if run:
+        cube(skin, (0.8, 0.8, 0.3), (0, 0, -1.9), 0.08, left)
     # brazo derecho: hombro que apunta a target
     shoulder = empty("Shoulder", (1.5, 0, 3.8), root)
     cube(jacket, (0.95, 0.95, 2.0), (0, 0, -0.9), 0.06, shoulder)
@@ -407,6 +415,78 @@ def investigator(loc, facing_deg, target, coat=(0.09, 0.22, 0.32), hat=True, bea
     cone.scale = (beam_len, beam_len, beam_len)
     for attr in ("visible_shadow", "visible_diffuse", "visible_glossy", "visible_transmission", "visible_volume_scatter"):
         setattr(cone, attr, False)
+    return root
+
+
+# ---------------------------------------------------------------- el Monstruo
+
+def tendril(mat, pts, radius, parent=None):
+    """Tentáculo: curva suave que se afina hacia la punta."""
+    data = bpy.data.curves.new("Tendril", "CURVE")
+    data.dimensions = "3D"
+    data.bevel_depth = radius
+    data.bevel_resolution = 4
+    data.resolution_u = 16
+    spline = data.splines.new("BEZIER")
+    spline.bezier_points.add(len(pts) - 1)
+    for i, (bp, co) in enumerate(zip(spline.bezier_points, pts)):
+        bp.co = co
+        bp.handle_left_type = bp.handle_right_type = "AUTO"
+        bp.radius = 1.0 - 0.9 * i / (len(pts) - 1)
+    obj = link(bpy.data.objects.new("Tendril", data))
+    obj.data.materials.append(mat)
+    obj.parent = parent
+    return obj
+
+
+def monster(loc, facing_deg=0.0, height=15.0):
+    """Hombre altísimo y delgado de traje negro, cabeza blanca sin cara y tentáculos a la espalda."""
+    root = empty("Monster", loc)
+    root.rotation_euler = (0, 0, math.radians(facing_deg))
+    k = height / 15.0
+    suit = flat("Suit", (0.012, 0.012, 0.016), 0.55)
+    shirt = flat("Shirt", (0.75, 0.74, 0.72), 0.6)
+    tie = flat("Tie", (0.35, 0.01, 0.02), 0.5)
+    pale = flat("Pale", (0.86, 0.84, 0.82), 0.45)
+    leg_h = 7.6 * k
+    for sx in (-1, 1):
+        cube(suit, (0.5 * k, 0.55 * k, leg_h), (sx * 0.38 * k, 0, leg_h / 2), 0.05, root)
+        cube(suit, (0.6 * k, 1.0 * k, 0.3 * k), (sx * 0.38 * k, 0.2 * k, 0.15 * k), 0.06, root)   # zapatos
+    torso_h = 5.0 * k
+    tz = leg_h + torso_h / 2
+    cube(suit, (1.7 * k, 0.8 * k, torso_h), (0, 0, tz), 0.12, root)
+    # camisa y corbata asomando por la chaqueta
+    prism(shirt, [(-0.35 * k, torso_h / 2), (0.35 * k, torso_h / 2), (0, -torso_h * 0.05)], 0.1,
+          (0, 0.38 * k, tz), root)
+    prism(tie, [(-0.09 * k, torso_h * 0.45), (0.09 * k, torso_h * 0.45), (0.13 * k, torso_h * 0.05),
+                (0, -torso_h * 0.05), (-0.13 * k, torso_h * 0.05)], 0.12, (0, 0.42 * k, tz), root)
+    neck_z = leg_h + torso_h
+    cube(pale, (0.35 * k, 0.35 * k, 0.6 * k), (0, 0, neck_z + 0.2 * k), 0.05, root)
+    ball(pale, 0.75 * k, (0, 0, neck_z + 1.25 * k), (0.82, 0.8, 1.15), root)
+    # brazos larguísimos estirados hacia delante para atrapar
+    for sx in (-1, 1):
+        shoulder = empty("MShoulder", (sx * 1.05 * k, 0, neck_z - 0.35 * k), root)
+        shoulder.rotation_euler = (math.radians(55 if sx < 0 else 40), math.radians(sx * 38), 0)
+        arm_l = 6.0 * k
+        cube(suit, (0.38 * k, 0.38 * k, arm_l), (0, 0, -arm_l / 2), 0.04, shoulder)
+        cube(shirt, (0.42 * k, 0.42 * k, 0.2 * k), (0, 0, -arm_l), 0.02, shoulder)
+        hand = empty("Hand", (0, 0, -arm_l - 0.35 * k), shoulder)
+        cube(pale, (0.4 * k, 0.15 * k, 0.5 * k), (0, 0, 0), 0.03, hand)
+        for f in range(4):
+            fx = (f - 1.5) * 0.11 * k
+            finger = empty("Finger", (fx, 0, -0.2 * k), hand)
+            finger.rotation_euler = (math.radians(-15 - 8 * f), math.radians((f - 1.5) * 6), 0)
+            cube(pale, (0.07 * k, 0.07 * k, 0.95 * k), (0, 0, -0.47 * k), 0.02, finger)
+    # tentáculos saliendo de la espalda
+    back_z = neck_z - 1.0 * k
+    for i, (ax, az, reach) in enumerate([(-1, 1.0, 7), (1, 1.2, 7.5), (-1, -0.4, 6), (1, -0.2, 6.5),
+                                          (-0.4, 1.8, 5.5), (0.5, 1.7, 6), (-1, 0.3, 8), (1, 0.6, 8.5)]):
+        sx = 1 if ax > 0 else -1
+        pts = [(ax * 0.4 * k, -0.35 * k, back_z),
+               (ax * 2.2 * k, -1.2 * k, back_z + az * 1.6 * k),
+               (ax * reach * 0.6 * k, -0.6 * k + (i % 3) * 0.8 * k, back_z + az * 3.0 * k),
+               (sx * reach * k, 0.8 * k + (i % 2) * 1.2 * k, back_z + az * 2.5 * k + (1.2 if i % 2 else -1.0) * k)]
+        tendril(suit, pts, 0.22 * k, root)
     return root
 
 
@@ -468,6 +548,39 @@ def shot_icon():
     lamp_bulb(5.6, -3.0)
     fog()
     camera((-1.0, 9.0, 3.4), (0.2, -2.5, 5.1), 26)
+
+
+def shot_icon_monster():
+    """El monstruo altísimo persigue por un pasillo a dos investigadores que huyen hacia la cámara."""
+    fresh()
+    setup((1024, 1024), 160)
+    room(width=16, back=-30, front=14, height=20)
+    painting(-4.0, 10.0, -30)
+    painting(4.0, 10.0, -30, 2.6, 3.4)
+    prop("Bookshelf", (-6.5, -22.0, 0), 90)
+    prop("GrandfatherClock", (6.8, -16.0, 0), -90)
+    prop("Dresser", (-6.8, -4.0, 0), 90)
+    prop("Vase", (-6.8, -4.0, 3.55))
+    prop("FloorLamp", (6.5, -25.0, 0))
+    lamp_bulb(6.5, -25.0)
+    monster((0.3, -8.5, 0), 0, 16.0)
+    point_light((0, -22.0, 9.0), (1.0, 0.1, 0.05), 3500, 2.0)                 # rojo detrás del monstruo
+    rim((0, -24, 16), (0, -11, 10), 900, (8, 6), (1.0, 0.2, 0.1))
+    investigator((-2.5, 0.5, 0), 20, empty("Aim", (0.0, -8.5, 13.0)), run=1.0, power=5000)
+    investigator((2.7, 2.5, 0), -15, empty("Aim", (0.5, -8.5, 9.0)), coat=(0.32, 0.12, 0.08), run=1.0, power=5000)
+    rim((0, 12, 12), (0, 1, 3), 400, (10, 4), (0.4, 0.55, 1.0))
+    # las linternas de los que huyen iluminan al monstruo por delante
+    for x in (-2.0, 2.2):
+        spot = bpy.data.lights.new("Back", "SPOT")
+        spot.energy = 9000
+        spot.color = (1.0, 0.9, 0.75)
+        spot.spot_size = math.radians(22)
+        spot.spot_blend = 0.5
+        light = link(bpy.data.objects.new("Back", spot))
+        light.location = (x, 1.0, 3.5)
+        light.rotation_euler = (Vector((0.3, -8.5, 12.5)) - Vector(light.location)).to_track_quat("-Z", "Y").to_euler()
+    fog(0.008, (20, 50, 22))
+    camera((0.0, 12.0, 2.4), (0.0, -8.0, 8.8), 22)
 
 
 def rim(loc, target, power=600, size=(6, 6), color=(0.4, 0.55, 1.0)):
@@ -546,7 +659,7 @@ def shot_thumb3():
     camera((0.5, 26.0, 6.0), (0.5, -6.0, 4.2), 30)
 
 
-SHOTS = {"icon": shot_icon, "thumb1": shot_thumb1, "thumb2": shot_thumb2, "thumb3": shot_thumb3}
+SHOTS = {"icon": shot_icon_monster, "icon_mimic": shot_icon, "thumb1": shot_thumb1, "thumb2": shot_thumb2, "thumb3": shot_thumb3}
 
 
 def main():
