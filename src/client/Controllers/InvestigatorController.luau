@@ -240,7 +240,27 @@ end
 -- El foco sale de delante de la cabeza y no de la cámara: en tercera persona la cámara
 -- está detrás del personaje y su cuerpo tapaba el haz justo al acercarte a algo.
 local AURA_RANGE = 9
-local FILL_REACH = 18
+local FILL_REACH = 24
+local MAX_LIGHT_RANGE = 60 -- límite de Roblox
+-- Al pegarte a una pared el foco acaba casi dentro de la cabeza: tu propio cuerpo (o el
+-- sombrero) proyectaba sombra y tapaba el haz. Localmente tu personaje no hace sombra.
+local shadowlessCharacter: Model? = nil
+
+local function removeOwnShadows(character: Model)
+	if shadowlessCharacter == character then
+		return
+	end
+	shadowlessCharacter = character
+	local function strip(d: Instance)
+		if d:IsA("BasePart") then
+			d.CastShadow = false
+		end
+	end
+	for _, d in character:GetDescendants() do
+		strip(d)
+	end
+	character.DescendantAdded:Connect(strip)
+end
 
 local function lightPart(name: string, parent: Instance): Part
 	local part = Instance.new("Part")
@@ -260,7 +280,7 @@ local function makeLocalLight(): Part
 	local part = lightPart("LocalFlashlight", workspace)
 	local beam = Instance.new("SpotLight")
 	beam.Name = "Beam"
-	beam.Brightness = 1.5
+	beam.Brightness = 3
 	beam.Color = Color3.fromRGB(255, 240, 210)
 	beam.Shadows = true
 	beam.Face = Enum.NormalId.Front
@@ -268,8 +288,8 @@ local function makeLocalLight(): Part
 	-- Luz cercana sin sombras: ilumina lo que tienes pegado delante aunque el cono no llegue.
 	local near = Instance.new("PointLight")
 	near.Name = "Near"
-	near.Range = 5
-	near.Brightness = 0.25
+	near.Range = 8
+	near.Brightness = 0.6
 	near.Color = beam.Color
 	near.Shadows = false
 	near.Parent = part
@@ -298,8 +318,12 @@ local function updateLocalFlashlight()
 	local serverLight = if head then head:FindFirstChild("Flashlight") else nil
 	local angle, range = 60, 50
 	if serverLight and serverLight:IsA("SpotLight") then
-		serverLight.Brightness = if on then 0 else 1.3
+		serverLight.Brightness = if on then 0 else 2.6
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
+	end
+	range = math.min(range, MAX_LIGHT_RANGE)
+	if character then
+		removeOwnShadows(character)
 	end
 	if not inPlay then
 		if localLightPart then
@@ -338,10 +362,13 @@ local function updateLocalFlashlight()
 		beam.Enabled = on
 		beam.Angle = angle
 		beam.Range = range
+		-- Pegado a algo, las sombras del foco solo dan problemas: se quitan hasta separarte.
+		beam.Shadows = wall == nil
 	end
 	local near = part:FindFirstChild("Near") :: PointLight?
 	if near then
 		near.Enabled = on
+		near.Brightness = if wall then 1.2 else 0.6
 	end
 	local anchor = part:FindFirstChild("FillAnchor") :: Part?
 	local fill = if anchor then anchor:FindFirstChild("Fill") :: PointLight? else nil
@@ -352,8 +379,8 @@ local function updateLocalFlashlight()
 			local dist = (hit.Position - origin).Magnitude
 			anchor.CFrame = CFrame.new(hit.Position + hit.Normal * math.clamp(dist * 0.5, 0.4, 2))
 			-- Más fuerte cuanto más cerca, como el círculo de una linterna real.
-			fill.Brightness = 0.6 * (1 - dist / FILL_REACH) + 0.1
-			fill.Range = 5 + dist * 0.3
+			fill.Brightness = 1.2 * (1 - dist / FILL_REACH) + 0.3
+			fill.Range = 6 + dist * 0.3
 		end
 	end
 end
