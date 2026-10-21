@@ -46,7 +46,7 @@ local TEXTS: { [string]: string } = {
 		"Vigila la caja de fusibles: cuando la luz vuelve, pueden escapar.",
 	}, "\n"),
 	Lobby = table.concat({
-		"ESCAPE THE MONSTER",
+		"SLENDERMAN.EXE",
 		"",
 		"Una Anomalía que se disfraza de mueble contra Investigadores que intentan escapar.",
 		"La ronda empieza sola cuando hay jugadores suficientes.",

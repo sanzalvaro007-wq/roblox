@@ -23,7 +23,7 @@ BONE = (238, 226, 198)
 EYE = (255, 200, 40)
 INK = (12, 8, 6)
 
-TITLE = "ESCAPE THE MONSTER"
+TITLE = "SLENDERMAN.EXE"
 
 # id del render -> lemas (inglés / español)
 TAGLINES = {
@@ -78,8 +78,8 @@ def fit(kind, size, text, max_w):
 def make_icon(src, dst):
     img = vignette(Image.open(src).convert("RGBA"), 0.5)
     w, h = img.size
-    glow_text(img, (w / 2, h * 0.115), "ESCAPE", fit("title", int(h * 0.16), "ESCAPE", w * 0.9), BONE, (200, 120, 20), h * 0.02, int(h * 0.008))
-    glow_text(img, (w / 2, h * 0.255), "THE MONSTER", fit("title", int(h * 0.115), "THE MONSTER", w * 0.92), BONE, (200, 120, 20), h * 0.02, int(h * 0.007))
+    glow_text(img, (w / 2, h * 0.115), "SLENDERMAN", fit("title", int(h * 0.16), "SLENDERMAN", w * 0.9), BONE, (200, 120, 20), h * 0.02, int(h * 0.008))
+    glow_text(img, (w / 2, h * 0.255), ".EXE", fit("title", int(h * 0.115), ".EXE", w * 0.92), BONE, (200, 120, 20), h * 0.02, int(h * 0.007))
     img.convert("RGB").resize((512, 512), Image.LANCZOS).save(dst, optimize=True)
 
 
