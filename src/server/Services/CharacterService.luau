@@ -18,15 +18,22 @@ CharacterService.Groups = {
 	Disguise = "Disguise",
 	Ghost = "Ghost",
 	Door = "Door", -- hojas de las puertas (ver Mansion/Doors)
+	-- Grupo de los rayos de la linterna del cliente (mismo nombre en InvestigatorController).
+	FlashlightRay = "FlashlightRay",
 }
 
 local lobbySpawn = CFrame.new(Config.Lobby.Position + Vector3.new(0, 4, 0))
 
 local function setupCollisionGroups()
 	local g = CharacterService.Groups
-	for _, name in { g.Players, g.Anomaly, g.Disguise, g.Ghost, g.Door } do
+	for _, name in { g.Players, g.Anomaly, g.Disguise, g.Ghost, g.Door, g.FlashlightRay } do
 		PhysicsService:RegisterCollisionGroup(name)
 	end
+	-- Los rayos de la linterna chocan con los muebles, el disfraz de la Anomalía (como con un
+	-- mueble de verdad) y los investigadores, pero no con fantasmas ni con el cuerpo oculto
+	-- de la Anomalía transformada, que de otro modo delataría cuál es el disfraz.
+	PhysicsService:CollisionGroupSetCollidable(g.FlashlightRay, g.Ghost, false)
+	PhysicsService:CollisionGroupSetCollidable(g.FlashlightRay, g.Anomaly, false)
 	-- Los fantasmas atraviesan las puertas; los disfraces no chocan con el decorado.
 	PhysicsService:CollisionGroupSetCollidable(g.Door, g.Ghost, false)
 	PhysicsService:CollisionGroupSetCollidable(g.Door, g.Disguise, false)

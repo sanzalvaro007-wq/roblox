@@ -243,6 +243,10 @@ local AURA_RANGE = 9
 local FILL_REACH = 24
 local MAX_LIGHT_RANGE = 60 -- límite de Roblox
 local WALL_BEAM_RANGE = 6
+local OFFSET, STANDOFF = 1, 0.3 -- el foco sale 1 stud por delante de la cabeza, a 0.3 de una pared
+local WALL_EXIT = 0.4 -- hasta separarte esto de más no se sale del modo pared (evita parpadeos)
+local RAY_GROUP = "FlashlightRay" -- lo registra CharacterService
+local wallMode = false
 -- Al pegarte a una pared el foco acaba casi dentro de la cabeza: tu propio cuerpo (o el
 -- sombrero) proyectaba sombra y tapaba el haz. Localmente tu personaje no hace sombra.
 local shadowlessCharacter: Model? = nil
@@ -253,7 +257,7 @@ local function removeOwnShadows(character: Model)
 	end
 	shadowlessCharacter = character
 	local function strip(d: Instance)
-		if d:IsA("BasePart") then
+		if d:IsA("BasePart") and d.CollisionGroup ~= "Disguise" then
 			d.CastShadow = false
 		end
 	end
@@ -323,15 +327,15 @@ local function updateLocalFlashlight()
 		angle, range = serverLight.Angle, serverLight.Range -- variante comprada en la tienda
 	end
 	range = math.min(range, MAX_LIGHT_RANGE)
-	if character then
-		removeOwnShadows(character)
-	end
 	if not inPlay then
 		if localLightPart then
 			localLightPart:Destroy()
 			localLightPart = nil
 		end
 		return
+	end
+	if character then
+		removeOwnShadows(character)
 	end
 	if not localLightPart then
 		localLightPart = makeLocalLight()
@@ -340,23 +344,29 @@ local function updateLocalFlashlight()
 	local camera = workspace.CurrentCamera
 	local look = camera.CFrame.LookVector
 
-	-- Los rayos ignoran tu cuerpo y a los fantasmas (invisibles para ti, pero los rayos los tocan).
+	-- Los rayos ignoran tu cuerpo, y su grupo salta fantasmas y el cuerpo oculto de la
+	-- Anomalía disfrazada: el disfraz tiene que reaccionar a la luz igual que un mueble.
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
+	pcall(function()
+		params.CollisionGroup = RAY_GROUP
+	end)
 	local ignore: { Instance } = { part }
-	for _, other in Players:GetPlayers() do
-		if other.Character and (other == player or other:GetAttribute("Ghost") == true) then
-			table.insert(ignore, other.Character)
-		end
+	if character then
+		table.insert(ignore, character)
 	end
 	params.FilterDescendantsInstances = ignore
 
 	-- Origen: un poco por delante de la cabeza, sin meterse nunca dentro de una pared.
 	local start = if head and head:IsA("BasePart") then head.Position else camera.CFrame.Position
-	local ahead = 1
-	local wall = workspace:Raycast(start, look * ahead, params)
+	-- El sondeo llega más lejos que el foco para que cualquier superficie a menos de 0.3 del
+	-- punto de salida active el modo pared; para salir hay que separarse un poco más.
+	local probe = OFFSET + STANDOFF + (if wallMode then WALL_EXIT else 0)
+	local wall = workspace:Raycast(start, look * probe, params)
+	wallMode = wall ~= nil
+	local ahead = OFFSET
 	if wall then
-		ahead = math.max(0, (wall.Position - start).Magnitude - 0.3)
+		ahead = math.clamp((wall.Position - start).Magnitude - STANDOFF, 0, OFFSET)
 	end
 	local origin = start + look * ahead
 	part.CFrame = CFrame.lookAt(origin, origin + look)
