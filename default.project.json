@@ -3,6 +3,7 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
+      "$ignoreUnknownInstances": true,
       "Shared": { "$path": "src/shared" }
     },
     "ServerScriptService": {
@@ -11,6 +12,18 @@
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": { "$path": "src/client" }
+      }
+    },
+    "VoiceChatService": {
+      "$properties": {
+        "EnableDefaultVoice": true,
+        "UseAudioApi": "Enabled"
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 0
       }
     }
   }
